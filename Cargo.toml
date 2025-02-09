@@ -3,7 +3,7 @@ name = "mcwr"
 version = "0.1.0"
 edition = "2021"
 authors = ["k3nder"]
-license = "GPL-3"
+license = "GLP-3.0-only"
 description = "A MC WRAPPER CREATOR"
 
 [dependencies]
