@@ -1,0 +1,11 @@
+[package]
+name = "mcwr"
+version = "0.1.0"
+edition = "2021"
+authors = ["k3nder"]
+license = "GPL-3"
+description = "A MC WRAPPER CREATOR"
+
+[dependencies]
+mclr = "2.3.2"
+clap = { version = "4.5.28", features = ["derive"] }
