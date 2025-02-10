@@ -31,7 +31,8 @@ fn init() {
     assets:assets
     java:java
     versions:versions
-    tmp:.client.json.tmp"#;
+    tmp:.client.json.tmp
+    logger:logger.config.xml"#;
 
     // si no existen los creamos
     if !versions_path.exists() { fs::create_dir(versions_path).unwrap(); }

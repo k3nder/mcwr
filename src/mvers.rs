@@ -28,7 +28,7 @@ impl Version {
                 libraries: format!("{}/libs", dir.to_str().unwrap()),
                 jar_file: format!("{}/game.jar", dir.to_str().unwrap()),
                 bin: format!("{}/natives", dir.to_str().unwrap()),
-                logger: "".to_string()
+                logger: mconf::get("logger"),
             },
             java_home: self.java.to_string(),
             game_dir: wdir,
