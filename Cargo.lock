@@ -860,9 +860,9 @@ dependencies = [
 
 [[package]]
 name = "mclr"
-version = "2.3.3"
+version = "2.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e0c34f7b487e2629dec1664a26ae1c2a7c66817c6e88bf18f0ec4fd795b0f1cc"
+checksum = "fdd5d05b1ee50f2310ae78f0e9cdec5404319ecf3adf102297a093f52128705f"
 dependencies = [
  "bytes",
  "flate2",

@@ -7,5 +7,5 @@ license = "GPL-3.0-only"
 description = "A MC WRAPPER CREATOR"
 
 [dependencies]
-mclr = {version = "2.3.3" }
+mclr = "2.3.5"
 clap = { version = "4.5.28", features = ["derive"] }
