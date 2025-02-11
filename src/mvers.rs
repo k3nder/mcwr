@@ -37,11 +37,11 @@ impl Version {
                 assets_index: (&self.assets).clone()
             },
             user: CommandUserConfig {
-                user_type: "user".to_string(),
-                client_id: "0".to_string(),
-                uuid: "0000".to_string(),
-                xuid: "ss".to_string(),
-                access_token: "0".to_string(),
+                user_type: mconf::get_or("usertype", "user"),
+                client_id: mconf::get_or("clientid", "client"),
+                uuid: mconf::get_or("uuid", "u0i0i0d0"),
+                xuid: mconf::get_or("xuid", "x0i0i0d"),
+                access_token: mconf::get_or("access_token", "0"),
                 user_name: username,
             },
             version: CommandVersionConfig {

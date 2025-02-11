@@ -15,6 +15,12 @@ pub fn get(key: &str) -> String {
         None => panic!("Unknown configuration: {}", key),
     }
 }
+pub fn get_or(key: &str, default: &str) -> String {
+    match config().get(key).map(|s| s.clone()) {
+        Some(s) => s,
+        None => default.to_string(),
+    }
+}
 /// guarda una configuracion
 pub fn save(map: HashMap<String, String>) {
     let file = Path::new("user.conf");
