@@ -94,6 +94,11 @@ pub fn download(version: JsonVersion, assets: bool) {
     // descargar el jar del juego
     println!("Downloading... Game");
     mc::download(game_path.to_str().unwrap(), &version);
+    if !Path::new(mconf::get("logger").as_str()).exists() {
+        if let Some(logg) = &version.clone().logging {
+            mc::get_config_logger(logg, mconf::get("logger").as_str());
+        }
+    }
     // si se piden, descargar assets
     if assets { println!("Downloading... Assets"); mc::utils::assets_utils::download_all(mconf::get("assets").as_str(), &version, HandleEvent::new(move |e| println!("{}", e.to_string())), HandleEvent::new(move |e| {println!("assets[{}%]", e.percent());})); }
 }
