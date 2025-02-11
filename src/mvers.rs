@@ -14,9 +14,10 @@ pub struct Version {
     pub assets: String,
     pub main: String,
     pub java: String,
+    pub args: Vec<String>,
 }
 impl Version {
-    pub fn run(&self, stdout: fn(String), stderr: fn(String), wdir: String) {
+    pub fn run(&self, stdout: fn(String), stderr: fn(String), workdir: String) {
         // declarar variables
         let dir = Path::new(&self.pwd);
         let assets = mconf::get("assets");
@@ -31,7 +32,7 @@ impl Version {
                 logger: mconf::get("logger"),
             },
             java_home: self.java.to_string(),
-            game_dir: wdir,
+            game_dir: workdir,
             assets: CommandAssetsConfig {
                 assets_dir: assets,
                 assets_index: (&self.assets).clone()
@@ -39,9 +40,9 @@ impl Version {
             user: CommandUserConfig {
                 user_type: mconf::get_or("usertype", "user"),
                 client_id: mconf::get_or("clientid", "client"),
-                uuid: mconf::get_or("uuid", "u0i0i0d0"),
-                xuid: mconf::get_or("xuid", "x0i0i0d"),
-                access_token: mconf::get_or("access_token", "0"),
+                uuid: mconf::get_or("uuid", "0"),
+                xuid: mconf::get_or("xuid", "0"),
+                access_token: mconf::get_or("token", "0"),
                 user_name: username,
             },
             version: CommandVersionConfig {
@@ -54,7 +55,8 @@ impl Version {
                 xms: mconf::get("xms").parse().expect("XMS configuration isn't number"),
             },
             event: stdout,
-            err_event: stderr
+            err_event: stderr,
+            args: self.args.clone(),
         }.run(RunType::NORMAL);
     }
 }
@@ -84,6 +86,7 @@ pub fn download(version: JsonVersion, assets: bool) {
     meta.insert("assets".to_string(), version.assets.clone());
     meta.insert("main".to_string(), version.mainClass.clone());
     meta.insert("java".to_string(), java_home);
+    meta.insert("args".to_string(), "".to_string());
     create_meta(&meta_file, meta);
     // descargar librerias
     println!("Downloading... Libs");
@@ -103,14 +106,14 @@ pub fn download(version: JsonVersion, assets: bool) {
     if assets { println!("Downloading... Assets"); mc::utils::assets_utils::download_all(mconf::get("assets").as_str(), &version, HandleEvent::new(move |e| println!("{}", e.to_string())), HandleEvent::new(move |e| {println!("assets[{}%]", e.percent());})); }
 }
 
-/// crea un archvivo establecido en `dir` y escribe el contenido de `map`
+/// Crea un archivo establecido en `dir` y escribe el contenido de `map`
 fn create_meta(dir: &Path, map: HashMap<String, String> ) {
     let deserialize = config::deserialize(map);
     fs::write(dir, deserialize).unwrap();
 }
-/// lista todas las versions
+/// Lista todas las versions
 pub fn list() -> HashMap<String, Version> {
-    // define el dir y inicializa el map
+    // define el dir e inicializa el map
     let dir = mconf::get("versions");
     let dir = Path::new(dir.as_str());
     let mut map: HashMap<String, Version> = HashMap::new();
@@ -135,6 +138,12 @@ fn read_dir_to_version(dir: &PathBuf) -> (String, Version) {
     let content = fs::read_to_string(meta_file).unwrap();
     let meta = config::serialize(content);
     let version_name = meta.get("version").unwrap().to_string();
+    let args_str = meta.get("args").unwrap().to_string();
+    let mut args = vec![];
+    if !args_str.is_empty() {
+        args = args_str.split(",,").map(|s| s.to_string()).collect();
+    }
+
     // crea la version y la devuelve
     let version = Version {
         pwd: dir.to_str().unwrap().to_string(),
@@ -142,10 +151,11 @@ fn read_dir_to_version(dir: &PathBuf) -> (String, Version) {
         assets: meta.get("assets").unwrap().to_string(),
         main: meta.get("main").unwrap().to_string(),
         java: meta.get("java").unwrap().to_string(),
+        args
     };
     (version_name, version)
 }
-/// optiene una version en concreto
+/// Obtiene una version en concreto
 pub fn get(version: String) -> Option<Version> {
     if list().get(&version).is_none() {
         return None;
