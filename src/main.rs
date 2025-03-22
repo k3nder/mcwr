@@ -1,17 +1,22 @@
-use std::fs;
-use std::path::Path;
 use mclr::deserialize::json_version;
 use mclr::deserialize::json_version::JsonVersion;
 use mclr::utils::manifest::manifest;
+use std::fs;
+use std::path::Path;
 
+mod cline;
 mod config;
+mod mconf;
+#[cfg(feature = "modpack")]
+mod modpack;
+mod mvers;
 #[cfg(test)]
 mod tests;
-mod mvers;
-mod mconf;
-mod cline;
 
 fn main() {
+    // initialize env_logger
+    env_logger::init();
+
     init();
     cline::run();
 }
