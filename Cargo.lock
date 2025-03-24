@@ -1482,12 +1482,13 @@ dependencies = [
 
 [[package]]
 name = "mcwr"
-version = "0.1.6"
+version = "0.1.7"
 dependencies = [
  "clap",
  "env_logger 0.10.2",
  "log",
  "mclr",
+ "modpacks",
 ]
 
 [[package]]
