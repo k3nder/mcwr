@@ -23,8 +23,12 @@ build-podman:
 
 publish:
 	@echo "Publishing..."
-	cargo publish
-	gh release create $(shell git describe --tags --abbrev=0) target/release/mcwr target/release/mcwr-universal
+	#cargo publish
+	@mkdir -p target/publish
+	@cp target/release/mcwr target/publish/mcwr
+	@cp target/x86_64-unknown-linux-musl/release/mcwr target/publish/mcwr-universal
+	gh release create "v0.1.7" ./target/publish/*
+	@rm -rf target/publish
 
 build-normal:
 	@echo "Building for normal..."
