@@ -1,13 +1,12 @@
-use crate::config;
 use std::collections::HashMap;
+use crate::config;
 
 #[test]
 fn config_serialize() {
     let test = r#"
     key:value
     key2:value2
-    "#
-    .to_string();
+    "#.to_string();
     let serial = config::serialize(test);
     let mut result = HashMap::new();
     result.insert(String::from("key"), String::from("value"));

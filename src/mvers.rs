@@ -1,15 +1,12 @@
-use crate::{config, mconf};
-use mclr::deserialize::json_version::JsonVersion;
-use mclr::mc;
-use mclr::mc::get_compatible_java;
-use mclr::mc::utils::command_builder::{
-    CommandAssetsConfig, CommandRamConfig, CommandResourcesConfig, CommandUserConfig,
-    CommandVersionConfig, RunType,
-};
-use mclr::utils::HandleEvent;
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
+use mclr::deserialize::json_version::JsonVersion;
+use mclr::mc;
+use mclr::mc::get_compatible_java;
+use mclr::mc::utils::command_builder::{CommandAssetsConfig, CommandRamConfig, CommandResourcesConfig, CommandUserConfig, CommandVersionConfig, RunType};
+use mclr::utils::HandleEvent;
+use crate::{config, mconf};
 #[derive(Debug, Clone)]
 pub struct Version {
     pub pwd: String,
@@ -38,7 +35,7 @@ impl Version {
             game_dir: workdir,
             assets: CommandAssetsConfig {
                 assets_dir: assets,
-                assets_index: (&self.assets).clone(),
+                assets_index: (&self.assets).clone()
             },
             user: CommandUserConfig {
                 user_type: mconf::get_or("usertype", "user"),
@@ -51,31 +48,24 @@ impl Version {
             version: CommandVersionConfig {
                 version_id: self.version.clone(),
                 version_type: "Vanilla".to_owned(),
-                main_class: self.main.clone(),
+                main_class: self.main.clone()
             },
             ram: CommandRamConfig {
-                xmx: mconf::get("xmx")
-                    .parse()
-                    .expect("XMX configuration isn't number"),
-                xms: mconf::get("xms")
-                    .parse()
-                    .expect("XMS configuration isn't number"),
+                xmx: mconf::get("xmx").parse().expect("XMX configuration isn't number"),
+                xms: mconf::get("xms").parse().expect("XMS configuration isn't number"),
             },
             event: stdout,
             err_event: stderr,
             args: self.args.clone(),
-        }
-        .run(RunType::NORMAL);
+        }.run(RunType::NORMAL);
     }
 }
 
 pub fn download(version: JsonVersion, assets: bool) {
     // definir variables y paths
-    let dir = format!("{}/{}", mconf::get("versions").as_str(), version.id);
+    let dir = format!("{}/{}",mconf::get("versions").as_str() ,version.id);
     let dir = Path::new(&dir);
-    if !dir.exists() {
-        fs::create_dir_all(dir).unwrap();
-    }
+    if !dir.exists() { fs::create_dir_all(dir).unwrap(); }
     let meta_file = format!("{}/.info", dir.display());
     let meta_file = Path::new(&meta_file);
     let libs_path = format!("{}/libs", dir.display());
@@ -84,37 +74,26 @@ pub fn download(version: JsonVersion, assets: bool) {
     let libs_path = Path::new(&libs_path);
     let natives_path = Path::new(&natives_path);
     let game_path = Path::new(&game_path);
-    if !libs_path.exists() {
-        fs::create_dir_all(libs_path).unwrap();
-    }
-    if !natives_path.exists() {
-        fs::create_dir_all(natives_path).unwrap();
-    }
+    if !libs_path.exists() { fs::create_dir_all(libs_path).unwrap(); }
+    if !natives_path.exists() { fs::create_dir_all(natives_path).unwrap(); }
     // descargar java
     println!("Downloading... Java");
-    let java_home = get_compatible_java(mconf::get("java").as_str(), &version.java_version.clone());
+    let java_home = get_compatible_java(mconf::get("java").as_str(), &version.javaVersion.clone());
     // crear archivo .info
     println!("Creating... Meta");
     let mut meta = HashMap::new();
     meta.insert("version".to_string(), version.id.clone());
     meta.insert("assets".to_string(), version.assets.clone());
-    meta.insert("main".to_string(), version.main_class.clone());
+    meta.insert("main".to_string(), version.mainClass.clone());
     meta.insert("java".to_string(), java_home);
     meta.insert("args".to_string(), "".to_string());
     create_meta(&meta_file, meta);
     // descargar librerias
     println!("Downloading... Libs");
     let libs = &version.libraries.clone();
-    mc::utils::libs_utils::filter_libs(
-        libs_path.to_str().unwrap(),
-        natives_path.to_str().unwrap(),
-        libs,
-        HandleEvent::new(move |e| {
-            println!("LIBS[{}]", e.percent());
-        }),
-    )
-    .expect("Error downloading libs")
-    .start();
+    mc::utils::libs_utils::get_libs(libs_path.to_str().unwrap(), natives_path.to_str().unwrap(), libs, HandleEvent::new(move |e| {
+        println!("LIBS[{}]", e.percent());
+    })).expect("Error downloading libs");
     // descargar el jar del juego
     println!("Downloading... Game");
     mc::download(game_path.to_str().unwrap(), &version);
@@ -124,18 +103,11 @@ pub fn download(version: JsonVersion, assets: bool) {
         }
     }
     // si se piden, descargar assets
-    if assets {
-        println!("Downloading... Assets");
-        mc::utils::assets_utils::download_all(
-            mconf::get("assets").as_str(),
-            &version,
-            HandleEvent::new(move |e| {}),
-        );
-    }
+    if assets { println!("Downloading... Assets"); mc::utils::assets_utils::download_all(mconf::get("assets").as_str(), &version, HandleEvent::new(move |e| println!("{}", e.to_string())), HandleEvent::new(move |e| {println!("assets[{}%]", e.percent());})); }
 }
 
 /// Crea un archivo establecido en `dir` y escribe el contenido de `map`
-fn create_meta(dir: &Path, map: HashMap<String, String>) {
+fn create_meta(dir: &Path, map: HashMap<String, String> ) {
     let deserialize = config::deserialize(map);
     fs::write(dir, deserialize).unwrap();
 }
@@ -179,7 +151,7 @@ fn read_dir_to_version(dir: &PathBuf) -> (String, Version) {
         assets: meta.get("assets").unwrap().to_string(),
         main: meta.get("main").unwrap().to_string(),
         java: meta.get("java").unwrap().to_string(),
-        args,
+        args
     };
     (version_name, version)
 }
@@ -187,9 +159,7 @@ fn read_dir_to_version(dir: &PathBuf) -> (String, Version) {
 pub fn get(version: String) -> Option<Version> {
     if list().get(&version).is_none() {
         return None;
-    } else {
-        Some(list().get(&version).unwrap().clone())
-    }
+    } else { Some(list().get(&version).unwrap().clone()) }
 }
 /// elimina una version
 pub fn remove(version: String) {
