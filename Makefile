@@ -23,7 +23,7 @@ build-podman:
 
 publish:
 	@echo "Publishing..."
-	#cargo publish
+	cargo publish
 	@mkdir -p target/publish
 	@cp target/release/mcwr target/publish/mcwr
 	@cp target/x86_64-unknown-linux-musl/release/mcwr target/publish/mcwr-universal
