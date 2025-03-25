@@ -27,7 +27,7 @@ publish:
 	@mkdir -p target/publish
 	@cp target/release/mcwr target/publish/mcwr
 	@cp target/x86_64-unknown-linux-musl/release/mcwr target/publish/mcwr-universal
-	gh release create "v0.1.7" ./target/publish/*
+	gh release create "v0.1.8" ./target/publish/*
 	@rm -rf target/publish
 
 build-normal:
