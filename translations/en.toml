@@ -1,0 +1,77 @@
+[info]
+initial = "Running interactive mode..."
+exit = "Exiting..."
+finish = "BYE!"
+
+[welcome]
+0 = "Welcome to the"
+1 = "interactive"
+2 = "mode!"
+
+[ls]
+initial = "Ok... Here are all the downloaded versions"
+empty = "Oh... you don't have downloaded versions"
+
+[dwld]
+initial = "you want to start a new adventure, let's start"
+done = "Everything is ready"
+cooldown.message = "Starting download in 3 seconds"
+
+[dwld.confirm]
+0 = "The "
+1 = ", a excelent election"
+
+[dwld.prompt.assets]
+title = "Do you want to download the assets?"
+yes = "Yes (For optimal performance)"
+no = "No (For faster download)"
+
+[dwld.prompt.launch]
+title = "Do you want to launch the game?"
+yes = "Yes"
+no = "No"
+
+[dwld.launch]
+initial = "Launching game... Good luck!"
+
+[config]
+initial = "Remember, the settings section is very useful, but don't touch anything you don't need to touch, have fun!"
+
+[config.get]
+initial = "All right, what confuguration to consult?"
+is = "is"
+
+[config.set]
+initial = "Remember again, don't touch the wrong things."
+prompt = "Choose a configuration to set"
+ask.new = "Enter new value"
+
+[config.choose.action]
+prompt = "Choose an action"
+get = "Get a configuration"
+set = "Set a configuration (WARN)"
+
+[delete]
+initial = "don't delete anything you don't want"
+confirm = "Are you sure you want to delete this version?"
+abort = "Aborted"
+success = "Version deleted"
+
+[run]
+finish = "Game finished"
+initial = "Ready to play?"
+loading = "Loading game..."
+
+[options]
+title = "What do you want to do?"
+ls = "Show all downloaded versions"
+dwld = "Download a new version"
+config = "Configurations"
+delete = "Delete a downloaded version"
+run = "Run a downloaded version"
+exit = "Exit"
+
+[select.version]
+prompt = "Choose a version"
+empty = "No versions found"
+ask.dwld = "Do you want to download a new version?"
