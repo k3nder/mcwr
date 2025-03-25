@@ -1,8 +1,8 @@
 use std::{io::Write, thread, time::Duration};
 
-use console::{style, Style, Term};
+use console::{style, Term};
 use dialoguer::{theme::ColorfulTheme, Confirm, FuzzySelect, Input, Select};
-use mclr::utils::manifest;
+use translateutil::translate;
 
 use crate::{mconf, mvers};
 
@@ -10,7 +10,7 @@ pub fn run() {
     let term = Term::stdout();
     term.clear_screen().unwrap();
 
-    println!("Running interactive mode...");
+    println!(translate!("info.initial"));
     welcome();
     loop {
         match prompt_user_action() {
@@ -30,7 +30,7 @@ pub fn run() {
                 run_game(&term);
             }
             Action::Exit => {
-                println!("Exiting...");
+                println!(translate!("info.exit"));
                 break;
             }
         }
@@ -43,8 +43,11 @@ enum ConfigurationAction {
 impl ConfigurationAction {
     fn prompt() -> ConfigurationAction {
         let select = Select::with_theme(&ColorfulTheme::default())
-            .with_prompt(system_message("Choose an action"))
-            .items(&["Get Configurations", "Set Configurations (WARN)"])
+            .with_prompt(system_message(translate!("config.choose.action.prompt")))
+            .items(&[
+                translate!("config.choose.action.get"),
+                translate!("config.choose.action.set"),
+            ])
             .interact()
             .unwrap();
         match select {
@@ -55,11 +58,11 @@ impl ConfigurationAction {
     }
 }
 fn configurations(term: &Term) {
-    print_system_message("Remember, the settings section is very useful, but don't touch anything you don't need to touch, have fun!");
+    print_system_message(translate!("config.initial"));
     let action = ConfigurationAction::prompt();
     match action {
         ConfigurationAction::GetConfigurations => {
-            print_system_message("All right, what confuguration to consult?");
+            print_system_message(translate!("config.get.initial"));
             let config = mconf::config();
             let rendereable_config = config.iter().map(|(key, _)| format!("{}", key));
             let select = FuzzySelect::with_theme(&ColorfulTheme::default())
@@ -69,23 +72,24 @@ fn configurations(term: &Term) {
             let key = config.keys().nth(select).unwrap();
             let value = config.get(key).unwrap();
             print_system_message(&format!(
-                "{} is {}",
+                "{} {} {}",
                 style(key).green().bold().bright(),
+                translate!("config.get.is"),
                 style(value).red().bold().bright()
             ));
         }
         ConfigurationAction::SetConfigurations => {
-            print_system_message("Remember again, don't touch the wrong things.");
+            print_system_message(translate!("config.set.initial"));
             let config = mconf::config();
             let rendereable_config = config.iter().map(|(key, _)| format!("{}", key));
             let select = FuzzySelect::with_theme(&ColorfulTheme::default())
-                .with_prompt(system_message("Select Configuration"))
+                .with_prompt(system_message(translate!("config.set.prompt")))
                 .items(&rendereable_config.collect::<Vec<String>>())
                 .interact()
                 .unwrap();
             let key = config.keys().nth(select).unwrap();
             let value: String = Input::new()
-                .with_prompt(system_message("Enter new value"))
+                .with_prompt(system_message(translate!("config.set.ask.new")))
                 .interact()
                 .unwrap();
             mconf::set(key, value);
@@ -93,12 +97,12 @@ fn configurations(term: &Term) {
     }
 }
 fn show_downloaded_versions(term: &Term) {
-    print_system_message("Ok... Here are all the downloaded versions");
+    print_system_message(translate!("ls.initial"));
     let versions = mvers::list();
     if versions.is_empty() {
         term.move_cursor_up(1).unwrap();
         term.clear_line().unwrap();
-        print_system_message("Oh... you don't have downloaded versions");
+        print_system_message(translate!("ls.empty"));
     } else {
         versions.iter().for_each(|(name, _)| {
             println!("{}", name);
@@ -106,14 +110,25 @@ fn show_downloaded_versions(term: &Term) {
     }
 }
 fn download_version(term: &Term) {
-    print_system_message("you want to start a new adventure, let's start");
+    print_system_message(translate!("dwld.initial"));
     let version_id = select_version(&term);
-    print_system_message(format!("The {}, a good version", version_id).as_str());
-    let assets = open_select(
-        "Do you want to download the assets?",
-        vec!["Yes (For optimal performance)", "No (For faster download)"],
+    print_system_message(
+        format!(
+            "{} {} {}",
+            translate!("dwld.confirm.0"),
+            version_id,
+            translate!("dwld.confirm.1")
+        )
+        .as_str(),
     );
-    print_system_message("Starting download in 3 seconds");
+    let assets = open_select(
+        translate!("dwld.prompt.assets.title"),
+        vec![
+            translate!("dwld.prompt.assets.yes"),
+            translate!("dwld.prompt.assets.no"),
+        ],
+    );
+    print_system_message(translate!("dwld.cooldown.message"));
     counter_back(3);
     let version = mclr::utils::manifest::manifest()
         .get(&version_id)
@@ -121,27 +136,30 @@ fn download_version(term: &Term) {
         .save_and_load(mconf::get("tmp").as_str());
     mvers::download(version.clone(), assets == 0);
 
-    print_system_message("Everything is ready");
+    print_system_message(translate!("dwld.done"));
     let launch = open_select(
-        "Finally, do you want to launch the game?",
-        vec!["Yes", "No"],
+        translate!("dwld.prompt.launch.title"),
+        vec![
+            translate!("dwld.prompt.launch.yes"),
+            translate!("dwld.prompt.launch.no"),
+        ],
     );
     if launch == 0 {
-        print_system_message("Launching game... Good Luck!");
+        print_system_message(translate!("dwld.launch.initial"));
         let version = mvers::get(version_id).unwrap();
         version.run(
             |l| println!("{}", l),
             |e| println!("{}", e),
             mconf::get("pwd"),
         );
-        print_system_message("BYE!!!");
+        print_system_message(translate!("info.finish"));
         std::process::exit(0);
     }
 }
 fn select_version(term: &Term) -> String {
     let versions = mvers::list_manifest();
     let selection = dialoguer::FuzzySelect::with_theme(&ColorfulTheme::default())
-        .with_prompt(system_message("Select a version"))
+        .with_prompt(system_message(translate!("select.version.prompt")))
         .default(0)
         .items(versions.as_slice())
         .interact()
@@ -155,9 +173,9 @@ fn select_downloaded_version(term: &Term) -> String {
         .collect::<Vec<String>>();
 
     if versions.is_empty() {
-        print_system_message("No versions found");
+        print_system_message(translate!("select.version.empty"));
         let confirm = Confirm::new()
-            .with_prompt(system_message("Do you want to download a new version?"))
+            .with_prompt(system_message(translate!("select.version.ask.dwld")))
             .interact()
             .unwrap();
         if !confirm {
@@ -169,7 +187,7 @@ fn select_downloaded_version(term: &Term) -> String {
     }
 
     let selection = dialoguer::FuzzySelect::with_theme(&ColorfulTheme::default())
-        .with_prompt(system_message("Select a version"))
+        .with_prompt(system_message(translate!("select.version.prompt")))
         .default(0)
         .items(versions.as_slice())
         .interact()
@@ -177,35 +195,34 @@ fn select_downloaded_version(term: &Term) -> String {
     versions[selection].clone()
 }
 fn delete_version(term: &Term) {
-    print_system_message("don't delete anything you don't want");
+    print_system_message(translate!("delete.initial"));
     let version_id = select_downloaded_version(term);
 
     let confirmation = Confirm::new()
-        .with_prompt(system_message(
-            "Are you sure you want to delete this version?",
-        ))
+        .with_prompt(system_message(translate!("delete.confirm")))
         .interact()
         .unwrap();
 
     if confirmation {
         mvers::remove(version_id);
     } else {
-        print_system_message("Aborting...");
+        print_system_message(translate!("delete.abort"));
     }
 
-    print_system_message("Version deleted");
+    print_system_message(translate!("delete.success"));
 }
 fn run_game(term: &Term) {
-    print_system_message("Ready to play?");
+    print_system_message(translate!("run.initial"));
     let version_id = select_downloaded_version(term);
-    print_system_message("Loading game...");
+    print_system_message(translate!("run.loading"));
     let version = mvers::get(version_id).unwrap();
     version.run(
         |l| println!("{}", l),
         |e| println!("{}", e),
         mconf::get("pwd"),
     );
-    print_system_message("Game finished, BYE!");
+    print_system_message(translate!("run.finish"));
+    print_system_message(translate!("info.finish"));
     std::process::exit(0);
 }
 
@@ -219,14 +236,19 @@ enum Action {
 }
 fn prompt_user_action() -> Action {
     let selection = open_select(
-        system_message("What do you want to do?").as_str(),
+        system_message(translate!("options.title")).as_str(),
         vec![
-            "Show downloaded versions",
-            "Download a version",
-            "Configurations",
-            "Delete a version",
-            "Run game",
-            style("Exit").bold().bright().red().to_string().as_str(),
+            translate!("options.ls"),
+            translate!("options.dwld"),
+            translate!("options.config"),
+            translate!("options.delete"),
+            translate!("options.run"),
+            style(translate!("options.exit"))
+                .bold()
+                .bright()
+                .red()
+                .to_string()
+                .as_str(),
         ],
     );
     match selection {
@@ -241,9 +263,9 @@ fn prompt_user_action() -> Action {
 fn welcome() {
     println!(
         "{} {} {}",
-        style("Welcome to the").bold(),
-        style("interactive").bold().green(),
-        style("mode").bold(),
+        style(translate!("welcome.0")).bold(),
+        style(translate!("welcome.1")).bold().green(),
+        style(translate!("welcome.2")).bold(),
     );
 }
 fn open_select(prompt: &str, options: Vec<&str>) -> usize {
