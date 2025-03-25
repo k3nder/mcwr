@@ -1,6 +1,3 @@
-use mclr::deserialize::json_version;
-use mclr::deserialize::json_version::JsonVersion;
-use mclr::utils::manifest::manifest;
 use std::path::Path;
 use std::{env, fs};
 
@@ -60,11 +57,4 @@ fn init() {
         // escribimos el valor por defecto
         fs::write(user_conf_path, default_config).unwrap();
     }
-}
-fn manifest_get(version: &str) -> JsonVersion {
-    let manifest = manifest();
-    manifest
-        .get(version)
-        .unwrap()
-        .save_and_load(mconf::get("tmp").as_str())
 }
