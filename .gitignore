@@ -2,3 +2,9 @@
 /INFO.md
 test
 test_modpack
+assets
+.client.json.tmp
+version_manifest.json
+user.conf
+versions
+java
