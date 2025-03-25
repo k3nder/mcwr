@@ -197,3 +197,13 @@ pub fn remove(version: String) {
     let version_path = Path::new(path.as_str());
     fs::remove_dir_all(version_path).ok();
 }
+
+/// lista todas las versiones del manifest
+pub fn list_manifest() -> Vec<String> {
+    let manifest = mclr::utils::manifest::manifest();
+    manifest
+        .versions
+        .iter()
+        .map(|version| version.id.clone())
+        .collect()
+}
