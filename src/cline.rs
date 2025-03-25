@@ -1,18 +1,18 @@
-use std::io;
-use std::io::Write;
-use std::process::exit;
+use crate::{mconf, mvers};
 use clap::{Parser, Subcommand};
 use mclr::deserialize::json_version;
 use mclr::deserialize::json_version::JsonVersion;
-use mclr::utils::{CounterEvent, HandleEvent};
 use mclr::utils::manifest::manifest;
-use crate::{mconf, mvers};
+use mclr::utils::{CounterEvent, HandleEvent};
+use std::io;
+use std::io::Write;
+use std::process::exit;
 
 #[derive(Parser, Debug)]
 #[command(author = "kristian/k3nder", version = "1.0", about)]
 struct Args {
     #[command(subcommand)]
-    command: Commands
+    command: Commands,
 }
 #[derive(Debug, Subcommand)]
 enum Commands {
@@ -24,66 +24,89 @@ enum Commands {
         #[arg(short = 'S')]
         silent: bool,
         #[arg(short = 'A')]
-        no_assets: bool
+        no_assets: bool,
     },
     Run {
         #[arg()]
         version: String,
         #[arg(short = 'S')]
-        silent: bool
+        silent: bool,
     },
     Ls {
         #[arg(short = 'S')]
-        short: bool
+        short: bool,
     },
     Remove {
         #[arg()]
         version: String,
         #[arg(short = 'C')]
-        confirm: bool
+        confirm: bool,
     },
     Config {
         key: Option<String>,
-        value: Option<String>
-    }
+        value: Option<String>,
+    },
+    Find {
+        #[arg()]
+        version: String,
+    },
 }
 
 pub fn run() {
     let args = Args::parse();
 
     match args.command {
-        Commands::Download { version, run, silent, no_assets } => {
+        Commands::Download {
+            version,
+            run,
+            silent,
+            no_assets,
+        } => {
             let version = if version.starts_with("./") {
                 json_version::load(version.as_str())
             } else {
                 let ma = manifest();
-                ma.get(version.as_str()).unwrap().save_and_load(mconf::get("tmp").as_str())
+                ma.get(version.as_str())
+                    .unwrap()
+                    .save_and_load(mconf::get("tmp").as_str())
             };
             mvers::download(version, !no_assets);
-        },
+        }
         Commands::Run { version, silent } => {
             let vers = mvers::get(version).expect("Version not found in MVERS");
 
-            let std: fn(String) = if silent { |e| {} } else { |e| { println!("{}", e); } };
+            let std: fn(String) = if silent {
+                |e| {}
+            } else {
+                |e| {
+                    println!("{}", e);
+                }
+            };
 
             vers.run(std, std, mconf::get("pwd"));
-        },
+        }
         Commands::Ls { short } => {
             let versions = mvers::list();
-            for (k,v) in versions.iter() {
-               let message = if short { format!("{}", k) } else
-               { format!("{} - {} - JAVA: {} - ASSETS: {} - MAIN: {}", k, "VANILLA", v.java, v.assets, v.main) };
+            for (k, v) in versions.iter() {
+                let message = if short {
+                    format!("{}", k)
+                } else {
+                    format!(
+                        "{} - {} - JAVA: {} - ASSETS: {} - MAIN: {}",
+                        k, "VANILLA", v.java, v.assets, v.main
+                    )
+                };
                 println!("{}", message);
             }
-        },
+        }
         Commands::Remove { version, confirm } => {
-           if !confirm {
-               if !confirmation(format!("¿Quieres eliminar la version {}?", version).as_str()) {
-                   exit(0);
-               }
-           }
-           mvers::remove(version);
-        },
+            if !confirm {
+                if !confirmation(format!("¿Quieres eliminar la version {}?", version).as_str()) {
+                    exit(0);
+                }
+            }
+            mvers::remove(version);
+        }
         Commands::Config { key, value } => {
             if key.is_none() && value.is_none() {
                 let config = mconf::config();
@@ -98,12 +121,28 @@ pub fn run() {
                 println!("{}", mconf::get(key.clone().unwrap().as_str()));
             }
         }
+        Commands::Find { version } => {
+            if version.eq("release") {
+                let release = mvers::manifest_latest_release();
+                println!("{}", release);
+                return;
+            } else if version.eq("snapshot") {
+                let snapshot = mvers::manifest_latest_snapshot();
+                println!("{}", snapshot);
+                return;
+            }
+            let versions = mvers::list_manifest();
+            versions
+                .iter()
+                .filter(|v| v.contains(&version))
+                .for_each(|v| println!("{}", v));
+        }
     }
 }
 
 fn confirmation(message: &str) -> bool {
     print!("{} (s/n): ", message);
-    io::stdout().flush().unwrap();  // Asegura que el mensaje se imprima antes de leer
+    io::stdout().flush().unwrap(); // Asegura que el mensaje se imprima antes de leer
 
     let mut input = String::new();
     io::stdin().read_line(&mut input).unwrap();
