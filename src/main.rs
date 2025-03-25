@@ -6,6 +6,8 @@ use std::path::Path;
 
 mod cline;
 mod config;
+#[cfg(feature = "interactive")]
+mod interactive;
 mod mconf;
 #[cfg(feature = "modpack")]
 mod modpack;
