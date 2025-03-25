@@ -1,7 +1,10 @@
-use console::{style, Style, Term};
-use dialoguer::{theme::ColorfulTheme, Select};
+use std::{io::Write, thread, time::Duration};
 
-use crate::mvers;
+use console::{style, Style, Term};
+use dialoguer::{theme::ColorfulTheme, Confirm, FuzzySelect, Input, Select};
+use mclr::utils::manifest;
+
+use crate::{mconf, mvers};
 
 pub fn run() {
     let term = Term::stdout();
@@ -27,15 +30,67 @@ pub fn run() {
                 run_game(&term);
             }
             Action::Exit => {
-                println!("Exiting interactive mode...");
+                println!("Exiting...");
                 break;
             }
         }
     }
 }
-
-fn configurations(term: &Term) -> _ {
-    todo!()
+enum ConfigurationAction {
+    GetConfigurations,
+    SetConfigurations,
+}
+impl ConfigurationAction {
+    fn prompt() -> ConfigurationAction {
+        let select = Select::with_theme(&ColorfulTheme::default())
+            .with_prompt(system_message("Choose an action"))
+            .items(&["Get Configurations", "Set Configurations (WARN)"])
+            .interact()
+            .unwrap();
+        match select {
+            0 => ConfigurationAction::GetConfigurations,
+            1 => ConfigurationAction::SetConfigurations,
+            _ => unreachable!(),
+        }
+    }
+}
+fn configurations(term: &Term) {
+    print_system_message("Remember, the settings section is very useful, but don't touch anything you don't need to touch, have fun!");
+    let action = ConfigurationAction::prompt();
+    match action {
+        ConfigurationAction::GetConfigurations => {
+            print_system_message("All right, what confuguration to consult?");
+            let config = mconf::config();
+            let rendereable_config = config.iter().map(|(key, _)| format!("{}", key));
+            let select = FuzzySelect::with_theme(&ColorfulTheme::default())
+                .items(&rendereable_config.collect::<Vec<String>>())
+                .interact()
+                .unwrap();
+            let key = config.keys().nth(select).unwrap();
+            let value = config.get(key).unwrap();
+            print_system_message(&format!(
+                "{} is {}",
+                style(key).green().bold().bright(),
+                style(value).red().bold().bright()
+            ));
+        }
+        ConfigurationAction::SetConfigurations => {
+            print_system_message("Remember again, don't touch the wrong things.");
+            let config = mconf::config();
+            let rendereable_config = config.iter().map(|(key, _)| format!("{}", key));
+            let select = FuzzySelect::with_theme(&ColorfulTheme::default())
+                .with_prompt(system_message("Select Configuration"))
+                .items(&rendereable_config.collect::<Vec<String>>())
+                .interact()
+                .unwrap();
+            let key = config.keys().nth(select).unwrap();
+            let value: String = Input::new()
+                .with_prompt(system_message("Enter new value"))
+                .interact()
+                .unwrap();
+            mconf::set(key, value);
+        }
+    }
 }
 fn show_downloaded_versions(term: &Term) {
     print_system_message("Ok... Here are all the downloaded versions");
@@ -60,7 +115,7 @@ fn download_version(term: &Term) {
     );
     print_system_message("Starting download in 3 seconds");
     counter_back(3);
-    let version = manifest()
+    let version = mclr::utils::manifest::manifest()
         .get(&version_id)
         .unwrap()
         .save_and_load(mconf::get("tmp").as_str());
@@ -93,11 +148,65 @@ fn select_version(term: &Term) -> String {
         .unwrap();
     versions[selection].clone()
 }
+fn select_downloaded_version(term: &Term) -> String {
+    let versions = mvers::list()
+        .iter()
+        .map(|v| v.0.clone())
+        .collect::<Vec<String>>();
+
+    if versions.is_empty() {
+        print_system_message("No versions found");
+        let confirm = Confirm::new()
+            .with_prompt(system_message("Do you want to download a new version?"))
+            .interact()
+            .unwrap();
+        if !confirm {
+            std::process::exit(0);
+        } else {
+            download_version(term);
+            return select_downloaded_version(term);
+        }
+    }
+
+    let selection = dialoguer::FuzzySelect::with_theme(&ColorfulTheme::default())
+        .with_prompt(system_message("Select a version"))
+        .default(0)
+        .items(versions.as_slice())
+        .interact()
+        .unwrap();
+    versions[selection].clone()
+}
 fn delete_version(term: &Term) {
-    println!("Deleting version...");
+    print_system_message("don't delete anything you don't want");
+    let version_id = select_downloaded_version(term);
+
+    let confirmation = Confirm::new()
+        .with_prompt(system_message(
+            "Are you sure you want to delete this version?",
+        ))
+        .interact()
+        .unwrap();
+
+    if confirmation {
+        mvers::remove(version_id);
+    } else {
+        print_system_message("Aborting...");
+    }
+
+    print_system_message("Version deleted");
 }
 fn run_game(term: &Term) {
-    println!("Running game...");
+    print_system_message("Ready to play?");
+    let version_id = select_downloaded_version(term);
+    print_system_message("Loading game...");
+    let version = mvers::get(version_id).unwrap();
+    version.run(
+        |l| println!("{}", l),
+        |e| println!("{}", e),
+        mconf::get("pwd"),
+    );
+    print_system_message("Game finished, BYE!");
+    std::process::exit(0);
 }
 
 enum Action {
