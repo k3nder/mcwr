@@ -1,4 +1,5 @@
 use crate::{config, mconf};
+use mclr::deserialize::json_manifest::Latest;
 use mclr::deserialize::json_version::JsonVersion;
 use mclr::mc;
 use mclr::mc::get_compatible_java;
