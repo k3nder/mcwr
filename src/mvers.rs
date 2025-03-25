@@ -1,4 +1,5 @@
 use crate::{config, mconf};
+use mclr::deserialize::json_manifest::Latest;
 use mclr::deserialize::json_version::JsonVersion;
 use mclr::mc;
 use mclr::mc::get_compatible_java;
@@ -196,4 +197,27 @@ pub fn remove(version: String) {
     let path = format!("versions/{}", version);
     let version_path = Path::new(path.as_str());
     fs::remove_dir_all(version_path).ok();
+}
+
+/// lista todas las versiones del manifest
+pub fn list_manifest() -> Vec<String> {
+    let manifest = mclr::utils::manifest::manifest();
+    manifest
+        .versions
+        .iter()
+        .map(|version| version.id.clone())
+        .collect()
+}
+/// get manifest latest
+pub fn manifest_latest() -> Latest {
+    let manifest = mclr::utils::manifest::manifest();
+    manifest.latest
+}
+/// get manifest latest release
+pub fn manifest_latest_release() -> String {
+    manifest_latest().release.clone()
+}
+/// get manifest latest snapshot
+pub fn manifest_latest_snapshot() -> String {
+    manifest_latest().snapshot.clone()
 }
