@@ -52,14 +52,46 @@ fn show_downloaded_versions(term: &Term) {
 }
 fn download_version(term: &Term) {
     print_system_message("you want to start a new adventure, let's start");
+    let version_id = select_version(&term);
+    print_system_message(format!("The {}, a good version", version_id).as_str());
+    let assets = open_select(
+        "Do you want to download the assets?",
+        vec!["Yes (For optimal performance)", "No (For faster download)"],
+    );
+    print_system_message("Starting download in 3 seconds");
+    counter_back(3);
+    let version = manifest()
+        .get(&version_id)
+        .unwrap()
+        .save_and_load(mconf::get("tmp").as_str());
+    mvers::download(version.clone(), assets == 0);
+
+    print_system_message("Everything is ready");
+    let launch = open_select(
+        "Finally, do you want to launch the game?",
+        vec!["Yes", "No"],
+    );
+    if launch == 0 {
+        print_system_message("Launching game... Good Luck!");
+        let version = mvers::get(version_id).unwrap();
+        version.run(
+            |l| println!("{}", l),
+            |e| println!("{}", e),
+            mconf::get("pwd"),
+        );
+        print_system_message("BYE!!!");
+        std::process::exit(0);
+    }
 }
-fn select_version(term: &Term) {
-    let versions = mvers::list();
+fn select_version(term: &Term) -> String {
+    let versions = mvers::list_manifest();
     let selection = dialoguer::FuzzySelect::with_theme(&ColorfulTheme::default())
         .with_prompt(system_message("Select a version"))
         .default(0)
+        .items(versions.as_slice())
         .interact()
         .unwrap();
+    versions[selection].clone()
 }
 fn delete_version(term: &Term) {
     println!("Deleting version...");
@@ -118,4 +150,17 @@ fn system_message(message: &str) -> String {
 }
 fn print_system_message(message: &str) {
     println!("{}", system_message(message));
+}
+fn counter_back(seconds: u32) {
+    print!("{}", seconds);
+    std::io::stdout().flush().unwrap();
+    for i in (0..seconds).rev() {
+        for _ in (0..4).rev() {
+            print!(".");
+            std::io::stdout().flush().unwrap();
+            thread::sleep(Duration::from_millis(250));
+        }
+        print!("{}", i);
+        std::io::stdout().flush().unwrap();
+    }
 }
