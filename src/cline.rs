@@ -1,9 +1,7 @@
 use crate::{mconf, mvers};
 use clap::{Parser, Subcommand};
 use mclr::deserialize::json_version;
-use mclr::deserialize::json_version::JsonVersion;
 use mclr::utils::manifest::manifest;
-use mclr::utils::{CounterEvent, HandleEvent};
 use std::io;
 use std::io::Write;
 use std::process::exit;
@@ -76,7 +74,7 @@ pub fn run() {
             let vers = mvers::get(version).expect("Version not found in MVERS");
 
             let std: fn(String) = if silent {
-                |e| {}
+                |_| {}
             } else {
                 |e| {
                     println!("{}", e);

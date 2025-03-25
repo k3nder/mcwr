@@ -130,7 +130,7 @@ pub fn download(version: JsonVersion, assets: bool) {
         mc::utils::assets_utils::download_all(
             mconf::get("assets").as_str(),
             &version,
-            HandleEvent::new(move |e| {}),
+            HandleEvent::new(move |_| {}),
         );
     }
 }

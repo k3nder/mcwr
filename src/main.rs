@@ -1,11 +1,10 @@
-use mclr::deserialize::json_version;
-use mclr::deserialize::json_version::JsonVersion;
-use mclr::utils::manifest::manifest;
-use std::fs;
 use std::path::Path;
+use std::{env, fs};
 
 mod cline;
 mod config;
+#[cfg(feature = "interactive")]
+mod interactive;
 mod mconf;
 #[cfg(feature = "modpack")]
 mod modpack;
@@ -16,8 +15,12 @@ mod tests;
 fn main() {
     // initialize env_logger
     env_logger::init();
-
     init();
+    #[cfg(feature = "interactive")]
+    if cfg!(feature = "interactive") && env::args().len() == 1 {
+        interactive::run();
+        return;
+    }
     cline::run();
 }
 
@@ -54,11 +57,4 @@ fn init() {
         // escribimos el valor por defecto
         fs::write(user_conf_path, default_config).unwrap();
     }
-}
-fn manifest_get(version: &str) -> JsonVersion {
-    let manifest = manifest();
-    manifest
-        .get(version)
-        .unwrap()
-        .save_and_load(mconf::get("tmp").as_str())
 }
