@@ -1,8 +1,8 @@
 use mclr::deserialize::json_version;
 use mclr::deserialize::json_version::JsonVersion;
 use mclr::utils::manifest::manifest;
-use std::fs;
 use std::path::Path;
+use std::{env, fs};
 
 mod cline;
 mod config;
@@ -18,8 +18,12 @@ mod tests;
 fn main() {
     // initialize env_logger
     env_logger::init();
-
     init();
+    #[cfg(feature = "interactive")]
+    if cfg!(feature = "interactive") && env::args().len() == 1 {
+        interactive::run();
+        return;
+    }
     cline::run();
 }
 
