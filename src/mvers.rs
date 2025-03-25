@@ -207,3 +207,16 @@ pub fn list_manifest() -> Vec<String> {
         .map(|version| version.id.clone())
         .collect()
 }
+/// get manifest latest
+pub fn manifest_latest() -> Latest {
+    let manifest = mclr::utils::manifest::manifest();
+    manifest.latest
+}
+/// get manifest latest release
+pub fn manifest_latest_release() -> String {
+    manifest_latest().release.clone()
+}
+/// get manifest latest snapshot
+pub fn manifest_latest_snapshot() -> String {
+    manifest_latest().snapshot.clone()
+}
