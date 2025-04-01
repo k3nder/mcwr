@@ -2,6 +2,9 @@
 name = "translateutil"
 version = "0.1.0"
 edition = "2021"
+authors = ["k3nder"]
+description = "Macro for translate applications"
+licence = "MIT"
 
 [lib]
 proc-macro = true # Esta línea es crucial
