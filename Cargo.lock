@@ -2444,6 +2444,8 @@ dependencies = [
 [[package]]
 name = "translateutil"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a8363361119936eb06cba165ab2d4cb4c582c9b55de7e7f07be0401e63e297a7"
 dependencies = [
  "proc-macro2",
  "quote",
