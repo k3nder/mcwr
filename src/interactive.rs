@@ -29,12 +29,45 @@ pub fn run() {
             Action::RunGame => {
                 run_game(&term);
             }
+            Action::ViewMetadata => {
+                view_metadata(&term);
+            }
             Action::Exit => {
                 println!(translate!("info.exit"));
                 break;
             }
         }
     }
+}
+
+fn view_metadata(term: &Term) {
+    print_system_message(translate!("meta.view.initial"));
+    let version = select_downloaded_version(term);
+    print_system_message(translate!("meta.view.message"));
+    let version = mvers::get(version).unwrap();
+    print_meta("java", version.java);
+    print_meta("main", version.main);
+    print_meta("version", version.version);
+    print_meta_array("args", version.args);
+    print_meta_array("jvm", version.jvm);
+}
+fn print_meta_array(name: &str, values: Vec<String>) {
+    print_system_message(&format!(
+        "{} {}",
+        style(name).green().bold().bright(),
+        translate!("words.is")
+    ));
+    for val in values {
+        print_system_message(&format!("  - {}", style(val).red().bold().bright()));
+    }
+}
+fn print_meta(name: &str, value: String) {
+    print_system_message(&format!(
+        "{} {} {}",
+        style(name).green().bold().bright(),
+        translate!("words.is"),
+        style(value).red().bold().bright()
+    ));
 }
 enum ConfigurationAction {
     GetConfigurations,
@@ -74,7 +107,7 @@ fn configurations(term: &Term) {
             print_system_message(&format!(
                 "{} {} {}",
                 style(key).green().bold().bright(),
-                translate!("config.get.is"),
+                translate!("words.is"),
                 style(value).red().bold().bright()
             ));
         }
@@ -232,6 +265,7 @@ enum Action {
     Configurations,
     DeleteVersion,
     RunGame,
+    ViewMetadata,
     Exit,
 }
 fn prompt_user_action() -> Action {
@@ -243,6 +277,7 @@ fn prompt_user_action() -> Action {
             translate!("options.config"),
             translate!("options.delete"),
             translate!("options.run"),
+            translate!("options.view.meta"),
             style(translate!("options.exit"))
                 .bold()
                 .bright()
@@ -257,6 +292,7 @@ fn prompt_user_action() -> Action {
         2 => Action::Configurations,
         3 => Action::DeleteVersion,
         4 => Action::RunGame,
+        5 => Action::ViewMetadata,
         _ => Action::Exit,
     }
 }

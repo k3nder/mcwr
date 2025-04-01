@@ -8,6 +8,10 @@ finish = "BYE!"
 1 = "interactive"
 2 = "mode!"
 
+[meta.view]
+initial = "you want to see the metadata? what for?"
+message = "Here are all the metadata"
+
 [ls]
 initial = "Ok... Here are all the downloaded versions"
 empty = "Oh... you don't have downloaded versions"
@@ -39,7 +43,7 @@ initial = "Remember, the settings section is very useful, but don't touch anythi
 
 [config.get]
 initial = "All right, what confuguration to consult?"
-is = "is"
+
 
 [config.set]
 initial = "Remember again, don't touch the wrong things."
@@ -69,9 +73,13 @@ dwld = "Download a new version"
 config = "Configurations"
 delete = "Delete a downloaded version"
 run = "Run a downloaded version"
+view.meta = "View metadata"
 exit = "Exit"
 
 [select.version]
 prompt = "Choose a version"
 empty = "No versions found"
 ask.dwld = "Do you want to download a new version?"
+
+[words]
+is = "is"

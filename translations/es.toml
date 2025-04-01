@@ -8,6 +8,10 @@ finish = "ADIOS!"
 1 = "interactivo!"
 2 = ""
 
+[meta.view]
+initial = "Quieres ves las metas? Para que?"
+message = "Aqui estan todas las metas"
+
 [ls]
 initial = "Ok... Aqui estan todas las versiones descargadas"
 empty = "Oh... Tu no tienes versiones descargadas"
@@ -39,7 +43,7 @@ initial = "Recuerda, la sección de configuraciones es muy útil, pero no toques
 
 [config.get]
 initial = "De acuerdo, que quieres consultar?"
-is = "es"
+
 
 [config.set]
 initial = "Recuerda otra vez, no toques nada que no necesites tocar"
@@ -69,9 +73,13 @@ dwld = "Descargar una nueva versión"
 config = "Configuraciones"
 delete = "Eliminar una versión descargada"
 run = "Ejecutar una versión descargada"
+view.meta = "Mirar la meta"
 exit = "Salir"
 
 [select.version]
 prompt = "Elige una versión"
 empty = "No se encontraron versiones"
 ask.dwld = "¿Quieres descargar una nueva versión?"
+
+[words]
+is = "es"
