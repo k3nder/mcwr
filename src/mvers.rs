@@ -106,7 +106,7 @@ pub fn download(version: JsonVersion, assets: bool) {
     // descargar librerias
     println!("Downloading... Libs");
     let libs = &version.libraries.clone();
-    mc::utils::libs_utils::find(
+    mc::utils::libs_utils::filter_libs(
         libs_path.to_str().unwrap(),
         natives_path.to_str().unwrap(),
         libs,
@@ -127,12 +127,11 @@ pub fn download(version: JsonVersion, assets: bool) {
     // si se piden, descargar assets
     if assets {
         println!("Downloading... Assets");
-        mc::utils::assets_utils::find(
+        mc::utils::assets_utils::download_all(
             mconf::get("assets").as_str(),
             &version,
             HandleEvent::new(move |_| {}),
-        )
-        .start();
+        );
     }
 }
 

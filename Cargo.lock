@@ -673,9 +673,9 @@ dependencies = [
 
 [[package]]
 name = "dwldutil"
-version = "2.0.0"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57786848754f6840ff7a6eb821ab52e1a419183a8aa0608dfb6524efda3cce23"
+checksum = "64d6fbe27a441c5109d88b2651e8c288e3c3a0b0e5f725a9917702633ebde719"
 dependencies = [
  "env_logger 0.11.7",
  "flate2",
@@ -687,7 +687,6 @@ dependencies = [
  "sha2 0.10.8",
  "smol",
  "surf",
- "symlink",
  "tar",
  "zip",
 ]
@@ -1488,9 +1487,9 @@ dependencies = [
 
 [[package]]
 name = "mclr"
-version = "3.1.0"
+version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be574c1c2f79e25b6443e68c989499554784e8f0fb2dee1c9078a9bda47e875e"
+checksum = "41428ce2dc28a5e57b8e736fb711a2052cb63939722d2e37ad3c3ffc5e48148f"
 dependencies = [
  "dwldutil",
  "env_logger 0.10.2",
@@ -2203,12 +2202,6 @@ dependencies = [
  "serde_json",
  "web-sys",
 ]
-
-[[package]]
-name = "symlink"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a7973cce6668464ea31f176d85b13c7ab3bba2cb3b77a2ed26abd7801688010a"
 
 [[package]]
 name = "syn"
