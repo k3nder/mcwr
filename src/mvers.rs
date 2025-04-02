@@ -186,8 +186,6 @@ fn read_dir_to_version(dir: &PathBuf) -> (String, Version) {
     let args = meta.get("args").unwrap().get_vec();
     let args = args.iter().map(|v| v.get_string()).collect();
 
-    println!("{:?}", args);
-
     let jvm = meta.get("jvm").unwrap().get_vec();
     let jvm = jvm.iter().map(|v| v.get_string()).collect();
 

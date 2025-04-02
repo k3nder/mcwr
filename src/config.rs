@@ -378,7 +378,6 @@ fn serialize_line(line: String) -> Option<(String, Types)> {
     // guarda clave y valor en variables
     let key = &line[..separator_index];
     let value = &line[separator_index + 1..];
-    //println!("{}", value);
     Some((key.to_string(), Types::from(value.to_string()).unwrap()))
 }
 

@@ -32,7 +32,7 @@ fn init() {
     let user_conf_path = Path::new("user.conf");
 
     // valor por defecto de la configuracion
-    let default_config = r#"username:imbecil
+    let default_config = r#"username:'imbecil'
     xmx:*4*
     xms:*2*
     pwd:'workdir'
