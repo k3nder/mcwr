@@ -1,5 +1,5 @@
+use crate::config::Types;
 use crate::{config, mconf};
-use log::kv::ToKey;
 use mclr::deserialize::json_manifest::Latest;
 use mclr::deserialize::json_version::JsonVersion;
 use mclr::mc;
@@ -7,10 +7,10 @@ use mclr::mc::get_compatible_java;
 use mclr::utils::io_utils::system::OperatingSystem;
 use mclr::utils::HandleEvent;
 use std::collections::HashMap;
-use std::fs;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
+use std::{fs, i32};
 
 static META_FILE: &str = ".info";
 static CLIENT_FILE: &str = "client.jar";
@@ -31,8 +31,8 @@ impl Version {
     pub fn run(&self, stdout: fn(String), stderr: fn(String), workdir: String) {
         // declarar variables
         let dir = Path::new(&self.pwd);
-        let assets = mconf::get("assets");
-        let username = mconf::get("username");
+        let assets = mconf::get("assets").get_string();
+        let username = mconf::get("username").get_string();
 
         // ejecutar commando
         Command {
@@ -40,7 +40,7 @@ impl Version {
                 libraries: format!("{}/{}", dir.to_str().unwrap(), LIBS_DIR),
                 jar_file: format!("{}/{}", dir.to_str().unwrap(), CLIENT_FILE),
                 bin: format!("{}/{}", dir.to_str().unwrap(), NATIVES_DIR),
-                logger: mconf::get("logger"),
+                logger: mconf::get("logger").get_string(),
             },
             java_home: self.java.to_string(),
             game_dir: workdir,
@@ -49,11 +49,12 @@ impl Version {
                 assets_index: (&self.assets).clone(),
             },
             user: CommandUserConfig {
-                user_type: mconf::get_or("usertype", "user"),
-                client_id: mconf::get_or("clientid", "client"),
-                uuid: mconf::get_or("uuid", "0"),
-                xuid: mconf::get_or("xuid", "0"),
-                access_token: mconf::get_or("token", "0"),
+                user_type: mconf::get_or("usertype", Types::String("user".to_owned())).get_string(),
+                client_id: mconf::get_or("clientid", Types::String("client".to_owned()))
+                    .get_string(),
+                uuid: mconf::get_or("uuid", Types::String("0".to_owned())).get_string(),
+                xuid: mconf::get_or("xuid", Types::String("0".to_owned())).get_string(),
+                access_token: mconf::get_or("token", Types::String("0".to_owned())).get_string(),
                 user_name: username,
             },
             version: CommandVersionConfig {
@@ -62,12 +63,8 @@ impl Version {
                 main_class: self.main.clone(),
             },
             ram: CommandRamConfig {
-                xmx: mconf::get("xmx")
-                    .parse()
-                    .expect("XMX configuration isn't number"),
-                xms: mconf::get("xms")
-                    .parse()
-                    .expect("XMS configuration isn't number"),
+                xmx: mconf::get("xmx").get_number() as i32,
+                xms: mconf::get("xms").get_number() as i32,
             },
             event: stdout,
             err_event: stderr,
@@ -80,7 +77,11 @@ impl Version {
 
 pub fn download(version: JsonVersion, assets: bool) {
     // definir variables y paths
-    let dir = format!("{}/{}", mconf::get("versions").as_str(), version.id);
+    let dir = format!(
+        "{}/{}",
+        mconf::get("versions").get_string().as_str(),
+        version.id
+    );
     let dir = Path::new(&dir);
     if !dir.exists() {
         fs::create_dir_all(dir).unwrap();
@@ -101,16 +102,22 @@ pub fn download(version: JsonVersion, assets: bool) {
     }
     // descargar java
     println!("Downloading... Java");
-    let java_home = get_compatible_java(mconf::get("java").as_str(), &version.java_version.clone());
+    let java_home = get_compatible_java(
+        mconf::get("java").get_string().as_str(),
+        &version.java_version.clone(),
+    );
     // crear archivo .info
     println!("Creating... Meta");
     let mut meta = HashMap::new();
-    meta.insert("version".to_string(), version.id.clone());
-    meta.insert("assets".to_string(), version.assets.clone());
-    meta.insert("main".to_string(), version.main_class.clone());
-    meta.insert("java".to_string(), java_home);
-    meta.insert("args".to_string(), "".to_string());
-    meta.insert("jvm".to_string(), "".to_string());
+    meta.insert("assets".to_string(), Types::String(version.assets.clone()));
+    meta.insert("version".to_string(), Types::String(version.id.clone()));
+    meta.insert(
+        "main".to_string(),
+        Types::String(version.main_class.clone()),
+    );
+    meta.insert("java".to_string(), Types::String(java_home));
+    meta.insert("args".to_string(), Types::Vec(vec![]));
+    meta.insert("jvm".to_string(), Types::Vec(vec![]));
     create_meta(&meta_file, meta);
     // descargar librerias
     println!("Downloading... Libs");
@@ -128,16 +135,16 @@ pub fn download(version: JsonVersion, assets: bool) {
     // descargar el jar del juego
     println!("Downloading... Game");
     mc::download(game_path.to_str().unwrap(), &version);
-    if !Path::new(mconf::get("logger").as_str()).exists() {
+    if !Path::new(mconf::get("logger").get_string().as_str()).exists() {
         if let Some(logg) = &version.clone().logging {
-            mc::get_config_logger(logg, mconf::get("logger").as_str());
+            mc::get_config_logger(logg, mconf::get("logger").get_string().as_str());
         }
     }
     // si se piden, descargar assets
     if assets {
         println!("Downloading... Assets");
         mc::utils::assets_utils::download_all(
-            mconf::get("assets").as_str(),
+            &mconf::get("assets").get_string().as_str(),
             &version,
             HandleEvent::new(move |_| {}),
         );
@@ -145,14 +152,14 @@ pub fn download(version: JsonVersion, assets: bool) {
 }
 
 /// Crea un archivo establecido en `dir` y escribe el contenido de `map`
-fn create_meta(dir: &Path, map: HashMap<String, String>) {
+fn create_meta(dir: &Path, map: HashMap<String, Types>) {
     let deserialize = config::deserialize(map);
     fs::write(dir, deserialize).unwrap();
 }
 /// Lista todas las versions
 pub fn list() -> HashMap<String, Version> {
     // define el dir e inicializa el map
-    let dir = mconf::get("versions");
+    let dir = mconf::get("versions").get_string();
     let dir = Path::new(dir.as_str());
     let mut map: HashMap<String, Version> = HashMap::new();
     // por cada directorio existente en dir, si contiene un .info, lo anyade al map
@@ -175,26 +182,22 @@ fn read_dir_to_version(dir: &PathBuf) -> (String, Version) {
     let meta_file = Path::new(meta_file.as_str());
     let content = fs::read_to_string(meta_file).unwrap();
     let meta = config::serialize(content);
-    let version_name = meta.get("version").unwrap().to_string();
-    let args_str = meta.get("args").unwrap().to_string();
-    let mut args = vec![];
-    if !args_str.is_empty() {
-        args = args_str.split("$").map(|s| s.trim().to_string()).collect();
-    }
+    let version_name = meta.get("version").unwrap().get_string();
+    let args = meta.get("args").unwrap().get_vec();
+    let args = args.iter().map(|v| v.get_string()).collect();
 
-    let jvm_str = meta.get("jvm").unwrap().to_string();
-    let mut jvm = vec![];
-    if !jvm_str.is_empty() {
-        jvm = jvm_str.split("$").map(|s| s.trim().to_string()).collect();
-    }
+    println!("{:?}", args);
+
+    let jvm = meta.get("jvm").unwrap().get_vec();
+    let jvm = jvm.iter().map(|v| v.get_string()).collect();
 
     // crea la version y la devuelve
     let version = Version {
         pwd: dir.to_str().unwrap().to_string(),
         version: version_name.clone(),
-        assets: meta.get("assets").unwrap().to_string(),
-        main: meta.get("main").unwrap().to_string(),
-        java: meta.get("java").unwrap().to_string(),
+        assets: meta.get("assets").unwrap().get_string(),
+        main: meta.get("main").unwrap().get_string(),
+        java: meta.get("java").unwrap().get_string(),
         jvm,
         args,
     };
@@ -210,7 +213,7 @@ pub fn get(version: String) -> Option<Version> {
 }
 /// elimina una version
 pub fn remove(version: String) {
-    let path = format!("{}/{}", mconf::get("versions"), version);
+    let path = format!("{}/{}", mconf::get("versions").get_string(), version);
     let version_path = Path::new(path.as_str());
     fs::remove_dir_all(version_path).ok();
 }
@@ -301,14 +304,14 @@ impl Command {
         }
 
         let mut binding = std::process::Command::new(self.java_home.as_str());
-        let java = binding
-            .arg(format!("-Djna.tmpdir={}", self.resources.bin))
-            .arg(format!("-Dio.netty.native.workdir={}", self.resources.bin))
-            .arg(format!("-Djava.library.path={}", self.resources.bin))
-            .arg(format!(
-                "-Dlog4j.configurationFile={}",
-                self.resources.logger
-            ));
+        let mut java = binding;
+        //.arg(format!("-Djna.tmpdir={}", self.resources.bin))
+        //.arg(format!("-Dio.netty.native.workdir={}", self.resources.bin))
+        //.arg(format!("-Djava.library.path={}", self.resources.bin))
+        //.arg(format!(
+        //    "-Dlog4j.configurationFile={}",
+        //    self.resources.logger
+        //));
 
         for jvm in &self.jvm {
             java.arg(jvm);
@@ -377,12 +380,14 @@ impl Command {
         // Leer la salida del proceso hijo de manera asíncrona
         let reader = BufReader::new(stdout);
         for line in reader.lines() {
-            (self.event)(line.unwrap())
+            println!("{}", line.unwrap());
+            std::io::stdout().flush().unwrap();
         }
 
         let reader = BufReader::new(stderr);
         for line in reader.lines() {
-            (self.err_event)(line.unwrap())
+            println!("{}", line.unwrap());
+            std::io::stdout().flush().unwrap();
         }
 
         // Esperar a que el proceso hijo termine

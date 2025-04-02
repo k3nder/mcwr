@@ -4,7 +4,7 @@ use console::{style, Term};
 use dialoguer::{theme::ColorfulTheme, Confirm, FuzzySelect, Input, Select};
 use translateutil::translate;
 
-use crate::{mconf, mvers};
+use crate::{config::Types, mconf, mvers};
 
 pub fn run() {
     let term = Term::stdout();
@@ -103,7 +103,7 @@ fn configurations(term: &Term) {
                 .interact()
                 .unwrap();
             let key = config.keys().nth(select).unwrap();
-            let value = config.get(key).unwrap();
+            let value = config.get(key).unwrap().get_string();
             print_system_message(&format!(
                 "{} {} {}",
                 style(key).green().bold().bright(),
@@ -125,7 +125,7 @@ fn configurations(term: &Term) {
                 .with_prompt(system_message(translate!("config.set.ask.new")))
                 .interact()
                 .unwrap();
-            mconf::set(key, value);
+            mconf::set(key, Types::from_value(value).unwrap());
         }
     }
 }
@@ -166,7 +166,7 @@ fn download_version(term: &Term) {
     let version = mclr::utils::manifest::manifest()
         .get(&version_id)
         .unwrap()
-        .save_and_load(mconf::get("tmp").as_str());
+        .save_and_load(mconf::get("tmp").get_string().as_str());
     mvers::download(version.clone(), assets == 0);
 
     print_system_message(translate!("dwld.done"));
@@ -183,7 +183,7 @@ fn download_version(term: &Term) {
         version.run(
             |l| println!("{}", l),
             |e| println!("{}", e),
-            mconf::get("pwd"),
+            mconf::get("pwd").get_string(),
         );
         print_system_message(translate!("info.finish"));
         std::process::exit(0);
@@ -252,7 +252,7 @@ fn run_game(term: &Term) {
     version.run(
         |l| println!("{}", l),
         |e| println!("{}", e),
-        mconf::get("pwd"),
+        mconf::get("pwd").get_string(),
     );
     print_system_message(translate!("run.finish"));
     print_system_message(translate!("info.finish"));

@@ -1,3 +1,4 @@
+use crate::config::Types;
 use crate::{mconf, mvers};
 use clap::{Parser, Subcommand};
 use mclr::deserialize::json_version;
@@ -66,7 +67,7 @@ pub fn run() {
                 let ma = manifest();
                 ma.get(version.as_str())
                     .unwrap()
-                    .save_and_load(mconf::get("tmp").as_str())
+                    .save_and_load(mconf::get("tmp").get_string().as_str())
             };
             mvers::download(version, !no_assets);
         }
@@ -81,7 +82,7 @@ pub fn run() {
                 }
             };
 
-            vers.run(std, std, mconf::get("pwd"));
+            vers.run(std, std, mconf::get("pwd").get_string());
         }
         Commands::Ls { short } => {
             let versions = mvers::list();
@@ -109,14 +110,15 @@ pub fn run() {
             if key.is_none() && value.is_none() {
                 let config = mconf::config();
                 for (k, v) in config.iter() {
-                    println!("{} = {}", k, v);
+                    println!("{} = {}", k, v.display());
                 }
             }
             if key.is_some() && value.is_some() {
+                let value = Types::from_value(value.clone().unwrap());
                 mconf::set(key.clone().unwrap().as_str(), value.clone().unwrap());
             }
             if key.is_some() && value.is_none() {
-                println!("{}", mconf::get(key.clone().unwrap().as_str()));
+                println!("{}", mconf::get(key.clone().unwrap().as_str()).get_string());
             }
         }
         Commands::Find { version } => {

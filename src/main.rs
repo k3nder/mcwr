@@ -33,14 +33,14 @@ fn init() {
 
     // valor por defecto de la configuracion
     let default_config = r#"username:imbecil
-    xmx:4
-    xms:2
-    pwd:workdir
-    assets:assets
-    java:java
-    versions:versions
-    tmp:.client.json.tmp
-    logger:logger.config.xml"#;
+    xmx:*4*
+    xms:*2*
+    pwd:'workdir'
+    assets:'assets'
+    java:'java'
+    versions:'versions'
+    tmp:'.client.json.tmp'
+    logger:'logger.config.xml'"#;
 
     // si no existen los creamos
     if !versions_path.exists() {
