@@ -1,14 +1,20 @@
 use crate::config::Types;
 use crate::{mconf, mvers};
 use clap::{Parser, Subcommand};
+use flate2::read::GzEncoder;
+use flate2::Compression;
 use mclr::deserialize::json_version;
 use mclr::utils::manifest::manifest;
+use std::fmt::format;
+use std::fs::{self, File};
 use std::io;
 use std::io::Write;
+use std::path::Path;
 use std::process::exit;
+use tar::Builder;
 
 #[derive(Parser, Debug)]
-#[command(author = "kristian/k3nder", version = "1.0", about)]
+#[command(author = "kristian/k3nder", version = "0.2.3", about)]
 struct Args {
     #[command(subcommand)]
     command: Commands,
@@ -46,6 +52,11 @@ enum Commands {
         value: Option<String>,
     },
     Find {
+        #[arg()]
+        version: String,
+    },
+    #[cfg(feature = "export")]
+    Export {
         #[arg()]
         version: String,
     },
@@ -136,6 +147,24 @@ pub fn run() {
                 .iter()
                 .filter(|v| v.contains(&version))
                 .for_each(|v| println!("{}", v));
+        }
+        #[cfg(feature = "export")]
+        Commands::Export { version } => {
+            let path =
+                mconf::get_or("export_path", Types::String(String::from("exports"))).get_string();
+            if !Path::new(&path).exists() {
+                fs::create_dir(&path).expect("Cannot create export path");
+            }
+            let file = format!("{}/{}.tar.gz", path, version);
+            let versions_path = format!("{}/{}", mconf::get("versions").get_string(), version);
+            let file = File::create(file).expect("Cannot create output file");
+            let enc = GzEncoder::new(file, Compression::best());
+            let mut tar = Builder::new(enc);
+
+            tar.append_dir_all(&version, &versions_path)
+                .expect("Cannot find version");
+
+            tar.finish().expect("Cannot create export");
         }
     }
 }

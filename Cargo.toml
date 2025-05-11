@@ -1,6 +1,6 @@
 [package]
 name = "mcwr"
-version = "0.2.2"
+version = "0.2.3"
 edition = "2021"
 authors = ["k3nder"]
 license = "GPL-3.0-only"
@@ -16,11 +16,15 @@ console = { version = "0.15.11", optional = true }
 dialoguer = { version = "0.11.0", optional = true, features = ["fuzzy-select"] }
 indicatif = { version = "0.17.11", optional = true }
 translateutil = { version = "0.1.0", optional = true }
+## EXPORT DEPENDENCIES
+tar = { version = "0.4.44", optional = true }
+flate2 = { version = "1.1.1", optional = true }
 
 [features]
-default = ["interactive"]
+default = ["interactive", "export"]
 #default = ["modpack"]
 #modpack = ["modpacks"]
 interactive = ["console", "indicatif", "dialoguer", "translateutil"]
 en = []
 es = ["translateutil/es"]
+export = ["dep:tar", "dep:flate2"]
