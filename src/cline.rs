@@ -3,9 +3,7 @@ use crate::{mconf, mvers};
 use clap::{Parser, Subcommand};
 use flate2::read::GzEncoder;
 use flate2::Compression;
-use mclr::deserialize::json_version;
-use mclr::utils::manifest::manifest;
-use std::fmt::format;
+use mcd::api::ApiClientUtil;
 use std::fs::{self, File};
 use std::io;
 use std::io::Write;
@@ -72,15 +70,15 @@ pub fn run() {
             silent,
             no_assets,
         } => {
-            let version = if version.starts_with("./") {
-                json_version::load(version.as_str())
+            let apic = ApiClientUtil::new(mconf::get("manifest").get_string().as_str()).unwrap();
+
+            let client = if version.starts_with("./") {
+                apic.load(version.as_str(), &mconf::get("tmp").get_string()).unwrap()
             } else {
-                let ma = manifest();
-                ma.get(version.as_str())
-                    .unwrap()
-                    .save_and_load(mconf::get("tmp").get_string().as_str())
+                apic.fetch(&version, &mconf::get("tmp").get_string()).unwrap()
             };
-            mvers::download(version, !no_assets);
+            dbg!(&client);
+            mvers::download(&client, !no_assets);
         }
         Commands::Run { version, silent } => {
             let vers = mvers::get(version).expect("Version not found in MVERS");
