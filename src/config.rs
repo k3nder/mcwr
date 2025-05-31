@@ -296,7 +296,9 @@ impl Types {
                     let mut string = String::new();
                     for item in vector {
                         string.push_str(item.format().as_str());
+                        string.push_str(",");
                     }
+                    string.pop();
                     string
                 })
             }

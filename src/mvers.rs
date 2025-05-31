@@ -1,13 +1,19 @@
+use dwldutil::Downloader;
+use log::warn;
+use mcd::api::client::Client;
+use mcd::api::manifest::{Latest, Manifest};
+use mcd::api::{ApiClientError, ApiClientUtil};
+use mcd::command::{self, Command};
+use mcd::errors::FetchError;
+use mcd::file::fetch_client;
+use mcd::java::JavaUtil;
+use mcd::libs::LibsUtil;
+use mcd::resource::ResourceUtil;
+
 use crate::config::Types;
 use crate::{config, mconf};
-use mclr::deserialize::json_manifest::Latest;
-use mclr::deserialize::json_version::JsonVersion;
-use mclr::mc;
-use mclr::mc::get_compatible_java;
-use mclr::utils::io_utils::system::OperatingSystem;
-use mclr::utils::HandleEvent;
 use std::collections::HashMap;
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::{fs, i32};
@@ -24,63 +30,115 @@ pub struct Version {
     pub assets: String,
     pub main: String,
     pub java: String,
-    pub jvm: Vec<String>,
-    pub args: Vec<String>,
+    pub jvm_args: Vec<String>,
+    pub game_args: Vec<String>,
+    pub options: HashMap<String, usize>,
+    pub data: HashMap<String, String>,
+    pub version_type: String,
+    pub classpath: String,
 }
 impl Version {
-    pub fn run(&self, stdout: fn(String), stderr: fn(String), workdir: String) {
+    pub fn run(self, stdout: fn(String), stderr: fn(String), workdir: String) {
         // declarar variables
         let dir = Path::new(&self.pwd);
         let assets = mconf::get("assets").get_string();
         let username = mconf::get("username").get_string();
 
+        let natives_dir = format!("{}/{}", dir.to_str().unwrap(), NATIVES_DIR);
+        let libs_path = format!("{}/{}", dir.to_str().unwrap(), LIBS_DIR);
+        let jar_file = format!("{}/{}", dir.to_str().unwrap(), CLIENT_FILE);
+
+        let mut data: HashMap<String, String> = mconf::get("data").get_map().into_iter().map(|(k, v)| (k, v.get_string())).collect();
+
+           data.insert("natives_directory".to_owned(), natives_dir);
+           data.insert(
+               "classpath".to_owned(),
+               self.classpath,
+           );
+           data.insert("main_class".to_owned(), self.main);
+           data.insert("auth_player_name".to_owned(), username);
+           data.insert("version_name".to_owned(), self.version);
+           data.insert("game_directory".to_owned(), self.pwd);
+           data.insert("assets_root".to_owned(), mconf::get("assets").get_string());
+           data.insert(
+               "game_assets".to_owned(),
+               format!("{}/virtual/legacy/", mconf::get("assets").get_string()),
+           );
+           data.insert("assets_index_name".to_owned(), self.assets);
+           data.insert("auth_uuid".to_owned(), mconf::get("uuid").get_string());
+           data.insert("auth_access_token".to_owned(), mconf::get("token").get_string());
+           data.insert("clientid".to_owned(), mconf::get("clientid").get_string());
+           data.insert("auth_xuid".to_owned(), mconf::get("xuid").get_string());
+           data.insert("user_type".to_owned(), mconf::get("usertype").get_string());
+           data.insert("version_type".to_owned(), self.version_type);
+           data.insert("library_directory".to_owned(), libs_path);
+           data.insert("classpath_separator".to_owned(), ":".to_owned());
+
+           let mut child = Command::from_args(self.game_args, self.jvm_args, data)
+            .execute(
+               self.java,
+               vec![],
+           ).unwrap();
+
+           if let Some(stdout) = child.stdout.take() {
+                   let reader = BufReader::new(stdout);
+
+                   // Leemos línea a línea y las imprimimos
+                   for line in reader.lines() {
+                    let line = line.unwrap();
+                       println!("{}", line);
+                   }
+               }
+               let status = child.wait().unwrap();
+
+
         // ejecutar commando
-        Command {
-            resources: CommandResourcesConfig {
-                libraries: format!("{}/{}", dir.to_str().unwrap(), LIBS_DIR),
-                jar_file: format!("{}/{}", dir.to_str().unwrap(), CLIENT_FILE),
-                bin: format!("{}/{}", dir.to_str().unwrap(), NATIVES_DIR),
-                logger: mconf::get("logger").get_string(),
-            },
-            java_home: self.java.to_string(),
-            game_dir: workdir,
-            assets: CommandAssetsConfig {
-                assets_dir: assets,
-                assets_index: (&self.assets).clone(),
-            },
-            user: CommandUserConfig {
-                user_type: mconf::get_or("usertype", Types::String("user".to_owned())).get_string(),
-                client_id: mconf::get_or("clientid", Types::String("client".to_owned()))
-                    .get_string(),
-                uuid: mconf::get_or("uuid", Types::String("0".to_owned())).get_string(),
-                xuid: mconf::get_or("xuid", Types::String("0".to_owned())).get_string(),
-                access_token: mconf::get_or("token", Types::String("0".to_owned())).get_string(),
-                user_name: username,
-            },
-            version: CommandVersionConfig {
-                version_id: self.version.clone(),
-                version_type: "Vanilla".to_owned(),
-                main_class: self.main.clone(),
-            },
-            ram: CommandRamConfig {
-                xmx: mconf::get("xmx").get_number() as i32,
-                xms: mconf::get("xms").get_number() as i32,
-            },
-            event: stdout,
-            err_event: stderr,
-            args: self.args.clone(),
-            jvm: self.jvm.clone(),
-        }
-        .run(RunType::NORMAL);
+        //Command {
+        //    resources: CommandResourcesConfig {
+        //        libraries: format!("{}/{}", dir.to_str().unwrap(), LIBS_DIR),
+        //        jar_file: format!("{}/{}", dir.to_str().unwrap(), CLIENT_FILE),
+        //        bin: format!("{}/{}", dir.to_str().unwrap(), NATIVES_DIR),
+        //        logger: mconf::get("logger").get_string(),
+        //    },
+        //    java_home: self.java.to_string(),
+        //    game_dir: workdir,
+        //    assets: CommandAssetsConfig {
+        //        assets_dir: assets,
+        //        assets_index: (&self.assets).clone(),
+        //    },
+        //    user: CommandUserConfig {
+        //        user_type: mconf::get_or("usertype", Types::String("user".to_owned())).get_string(),
+        //        client_id: mconf::get_or("clientid", Types::String("client".to_owned()))
+        //            .get_string(),
+        //        uuid: mconf::get_or("uuid", Types::String("0".to_owned())).get_string(),
+        //        xuid: mconf::get_or("xuid", Types::String("0".to_owned())).get_string(),
+        //        access_token: mconf::get_or("token", Types::String("0".to_owned())).get_string(),
+        //        user_name: username,
+        //    },
+        //    version: CommandVersionConfig {
+        //        version_id: self.version.clone(),
+        //        version_type: "Vanilla".to_owned(),
+        //        main_class: self.main.clone(),
+        //    },
+        //    ram: CommandRamConfig {
+        //        xmx: mconf::get("xmx").get_number() as i32,
+        //        xms: mconf::get("xms").get_number() as i32,
+        //    },
+        //    event: stdout,
+        //    err_event: stderr,
+        //    args: self.args.clone(),
+        //    jvm: self.jvm.clone(),
+        //}
+        //.run(RunType::NORMAL);
     }
 }
 
-pub fn download(version: JsonVersion, assets: bool) {
+pub fn download(client: &Client, assets: bool) {
     // definir variables y paths
     let dir = format!(
         "{}/{}",
         mconf::get("versions").get_string().as_str(),
-        version.id
+        client.id
     );
     let dir = Path::new(&dir);
     if !dir.exists() {
@@ -90,65 +148,78 @@ pub fn download(version: JsonVersion, assets: bool) {
     let meta_file = Path::new(&meta_file);
     let libs_path = format!("{}/{}", dir.display(), LIBS_DIR);
     let natives_path = format!("{}/{}", dir.display(), NATIVES_DIR);
-    let game_path = format!("{}/{}", dir.display(), CLIENT_FILE);
+    let jar_path = format!("{}/{}", dir.display(), CLIENT_FILE);
     let libs_path = Path::new(&libs_path);
     let natives_path = Path::new(&natives_path);
-    let game_path = Path::new(&game_path);
-    if !libs_path.exists() {
-        fs::create_dir_all(libs_path).unwrap();
-    }
-    if !natives_path.exists() {
-        fs::create_dir_all(natives_path).unwrap();
-    }
+    let jar_path = Path::new(&jar_path);
+    // iniciar utilitarios
+    let javau = JavaUtil::new();
+    let libsu = LibsUtil::new();
+    let resu = ResourceUtil::new();
+
+    // crear una lista que contandra los archivos para descargar
+    let mut files = Vec::new();
+
     // descargar java
     println!("Downloading... Java");
-    let java_home = get_compatible_java(
-        mconf::get("java").get_string().as_str(),
-        &version.java_version.clone(),
-    );
+    match javau.fetch(client.java(), mconf::get("java").get_string().as_str()) {
+        Ok(f) => files.push(f),
+        Err(e) => warn!("{}", e),
+    }
     // crear archivo .info
     println!("Creating... Meta");
     let mut meta = HashMap::new();
-    meta.insert("assets".to_string(), Types::String(version.assets.clone()));
-    meta.insert("version".to_string(), Types::String(version.id.clone()));
+    meta.insert("assets".to_string(), Types::String(client.assets.clone()));
+    meta.insert("version".to_string(), Types::String(client.id.clone()));
     meta.insert(
         "main".to_string(),
-        Types::String(version.main_class.clone()),
+        Types::String(client.main_class.clone()),
     );
-    meta.insert("java".to_string(), Types::String(java_home));
-    meta.insert("args".to_string(), Types::Vec(vec![]));
-    meta.insert("jvm".to_string(), Types::Vec(vec![]));
-    create_meta(&meta_file, meta);
-    // descargar librerias
+    meta.insert("java".to_string(), Types::String(format!("{}/{}/bin/java", mconf::get("java").get_string().as_str(), javau.id_of(client.java()).unwrap())));
+
+    let (game, jvm) = command::build_args(&client, mconf::get("options").get_map().iter().map(|(k,v)| (k.clone(), v.get_number().eq(&1.0f32))).collect());
+
+    // Download libs
     println!("Downloading... Libs");
-    let libs = &version.libraries.clone();
-    mc::utils::libs_utils::filter_libs(
-        libs_path.to_str().unwrap(),
-        natives_path.to_str().unwrap(),
-        libs,
-        HandleEvent::new(move |_| {
-            //println!("LIBS[{}]", e.percent());
-        }),
-    )
-    .expect("Error downloading libs")
-    .start();
+    let classpath = match libsu.fetch(libs_path.to_str().unwrap(), natives_path.to_str().unwrap(), &client) {
+            Ok((mut fis, classpath)) => { files.append(&mut fis); classpath },
+            Err(e) => { warn!("{}", e); Vec::new() },
+        };
+
+    meta.insert("game_args".to_string(), Types::Vec(game.iter().map(|f| Types::String(f.clone())).collect()));
+    meta.insert("jvm_args".to_string(), Types::Vec(jvm.iter().map(|f| Types::String(f.clone())).collect()));
+    meta.insert("options".to_string(), Types::Map(HashMap::new()));
+    meta.insert("data".to_string(), Types::Map(HashMap::new()));
+    meta.insert("type".to_string(), Types::String(client.version_type.clone()));
+    meta.insert("classpath".to_string(), Types::String(format!("{}:{}", classpath.join(":"), jar_path.to_str().unwrap())));
+    create_meta(&meta_file, meta);
     // descargar el jar del juego
     println!("Downloading... Game");
-    mc::download(game_path.to_str().unwrap(), &version);
-    if !Path::new(mconf::get("logger").get_string().as_str()).exists() {
-        if let Some(logg) = &version.clone().logging {
-            mc::get_config_logger(logg, mconf::get("logger").get_string().as_str());
-        }
+    match fetch_client(&client, jar_path.to_str().unwrap()) {
+        Ok(f) => files.push(f),
+        Err(e) => warn!("{}", e),
     }
+    //if !Path::new(mconf::get("logger").get_string().as_str()).exists() {
+    //    if let Some(logg) = &version.clone().logging {
+    //        mc::get_config_logger(logg, mconf::get("logger").get_string().as_str());
+    //    }
+    //}
     // si se piden, descargar assets
     if assets {
         println!("Downloading... Assets");
-        mc::utils::assets_utils::download_all(
-            &mconf::get("assets").get_string().as_str(),
-            &version,
-            HandleEvent::new(move |_| {}),
-        );
+        let indexes_loc = format!("{}/indexes", mconf::get("assets").get_string().as_str());
+        if !Path::new(&indexes_loc).exists() {
+            fs::create_dir(&indexes_loc);
+        }
+        let index = resu.index_of(&client, &format!("{}/{}.json", &indexes_loc, &client.assets)).unwrap();
+        match resu.fetch(&index, mconf::get("assets").get_string().as_str()) {
+            Ok(mut fis) => files.append(&mut fis),
+            Err(e) => warn!("{}", e),
+        }
+
     }
+
+    Downloader::new().with_max_concurrent_downloads(mconf::get("max_current_downloads").get_number()as usize).with_files(files).start();
 }
 
 /// Crea un archivo establecido en `dir` y escribe el contenido de `map`
@@ -183,11 +254,13 @@ fn read_dir_to_version(dir: &PathBuf) -> (String, Version) {
     let content = fs::read_to_string(meta_file).unwrap();
     let meta = config::serialize(content);
     let version_name = meta.get("version").unwrap().get_string();
-    let args = meta.get("args").unwrap().get_vec();
-    let args = args.iter().map(|v| v.get_string()).collect();
+    let game_args = meta.get("game_args").unwrap().get_vec();
+    let game_args = game_args.iter().map(|v| v.get_string()).collect();
 
-    let jvm = meta.get("jvm").unwrap().get_vec();
-    let jvm = jvm.iter().map(|v| v.get_string()).collect();
+    let jvm_args = meta.get("jvm_args").unwrap().get_vec();
+    let jvm_args = jvm_args.iter().map(|v| v.get_string()).collect();
+
+
 
     // crea la version y la devuelve
     let version = Version {
@@ -196,8 +269,12 @@ fn read_dir_to_version(dir: &PathBuf) -> (String, Version) {
         assets: meta.get("assets").unwrap().get_string(),
         main: meta.get("main").unwrap().get_string(),
         java: meta.get("java").unwrap().get_string(),
-        jvm,
-        args,
+        jvm_args,
+        game_args,
+        version_type: meta.get("type").unwrap().get_string(),
+        options: meta.get("options").unwrap().get_map().iter().map(|(k,v)| (k.clone(), v.get_number() as usize)).collect(),
+        data: meta.get("data").unwrap().get_map().iter().map(|(k,v)| (k.clone(), v.get_string())).collect(),
+        classpath: meta.get("classpath").unwrap().get_string()
     };
     (version_name, version)
 }
@@ -218,7 +295,7 @@ pub fn remove(version: String) {
 
 /// lista todas las versiones del manifest
 pub fn list_manifest() -> Vec<String> {
-    let manifest = mclr::utils::manifest::manifest();
+    let manifest = manifest().unwrap();
     manifest
         .versions
         .iter()
@@ -227,7 +304,7 @@ pub fn list_manifest() -> Vec<String> {
 }
 /// get manifest latest
 pub fn manifest_latest() -> Latest {
-    let manifest = mclr::utils::manifest::manifest();
+    let manifest = manifest().unwrap();
     manifest.latest
 }
 /// get manifest latest release
@@ -238,157 +315,6 @@ pub fn manifest_latest_release() -> String {
 pub fn manifest_latest_snapshot() -> String {
     manifest_latest().snapshot.clone()
 }
-
-pub enum RunType {
-    WORLD(String),
-    SERVER(String),
-    NORMAL,
-}
-
-pub struct Command {
-    pub resources: CommandResourcesConfig,
-    pub java_home: String,
-    pub game_dir: String,
-    pub assets: CommandAssetsConfig,
-    pub user: CommandUserConfig,
-    pub version: CommandVersionConfig,
-    pub ram: CommandRamConfig,
-    pub event: fn(String),
-    pub err_event: fn(String),
-    pub args: Vec<String>,
-    pub jvm: Vec<String>,
-}
-pub struct CommandResourcesConfig {
-    pub libraries: String,
-    pub jar_file: String,
-    pub bin: String,
-    pub logger: String,
-}
-pub struct CommandRamConfig {
-    pub xmx: i32,
-    pub xms: i32,
-}
-pub struct CommandAssetsConfig {
-    pub assets_dir: String,
-    pub assets_index: String,
-}
-pub struct CommandVersionConfig {
-    pub version_id: String,
-    pub version_type: String,
-    pub main_class: String,
-}
-pub struct CommandUserConfig {
-    pub user_type: String,
-    pub client_id: String,
-    pub uuid: String,
-    pub xuid: String,
-    pub access_token: String,
-    pub user_name: String,
-}
-impl Command {
-    pub fn run(&self, run_type: RunType) {
-        //println!("{}", self.java_home.clone());
-
-        match OperatingSystem::detect() {
-            OperatingSystem::Linux => {
-                let chmod = std::process::Command::new("/bin/chmod")
-                    .arg("+x")
-                    .arg(self.java_home.clone().as_str())
-                    .spawn();
-
-                chmod.unwrap().wait().unwrap();
-            }
-            _ => {}
-        }
-
-        let mut binding = std::process::Command::new(self.java_home.as_str());
-        let mut java = binding;
-        //.arg(format!("-Djna.tmpdir={}", self.resources.bin))
-        //.arg(format!("-Dio.netty.native.workdir={}", self.resources.bin))
-        //.arg(format!("-Djava.library.path={}", self.resources.bin))
-        //.arg(format!(
-        //    "-Dlog4j.configurationFile={}",
-        //    self.resources.logger
-        //));
-
-        for jvm in &self.jvm {
-            java.arg(jvm);
-        }
-
-        let child = java
-            .arg("-cp")
-            .arg(format!(
-                "{}{}{}/*",
-                self.resources.jar_file,
-                (match OperatingSystem::detect() {
-                    OperatingSystem::Linux => ":",
-                    _ => ";",
-                }),
-                self.resources.libraries
-            ))
-            .arg(self.version.main_class.as_str())
-            .arg("--version")
-            .arg(self.version.version_id.as_str())
-            .arg("--versionType")
-            .arg(self.version.version_type.as_str())
-            .arg("--accessToken")
-            .arg(self.user.access_token.as_str())
-            .arg("--uuid")
-            .arg(self.user.uuid.as_str())
-            .arg("--xuid")
-            .arg(self.user.xuid.as_str())
-            .arg("--clientId")
-            .arg(self.user.client_id.as_str())
-            .arg("--username")
-            .arg(self.user.user_name.as_str())
-            .arg("--userType")
-            .arg(self.user.user_type.as_str())
-            .arg("--assetIndex")
-            .arg(self.assets.assets_index.as_str())
-            .arg("--assetsDir")
-            .arg(self.assets.assets_dir.as_str())
-            .arg("--gameDir")
-            .arg(self.game_dir.as_str())
-            .arg(match &run_type {
-                RunType::WORLD(_) => "--quickPlaySingleplayer",
-                RunType::SERVER(_) => "--quickPlayMultiplayer",
-                RunType::NORMAL => "",
-            })
-            .arg(match run_type {
-                RunType::WORLD(name) => name,
-                RunType::SERVER(ip) => ip,
-                RunType::NORMAL => { "" }.parse().unwrap(),
-            });
-
-        for arg in &self.args {
-            child.arg(arg);
-        }
-
-        let mut child = child
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .unwrap();
-
-        //println!("run");
-        // Obtener el stdout del proceso hijo
-        let stdout = child.stdout.take().expect("Failed to capture stdout");
-        let stderr = child.stderr.take().expect("Failed to capture stderr");
-
-        // Leer la salida del proceso hijo de manera asíncrona
-        let reader = BufReader::new(stdout);
-        for line in reader.lines() {
-            println!("{}", line.unwrap());
-            std::io::stdout().flush().unwrap();
-        }
-
-        let reader = BufReader::new(stderr);
-        for line in reader.lines() {
-            println!("{}", line.unwrap());
-            std::io::stdout().flush().unwrap();
-        }
-
-        // Esperar a que el proceso hijo termine
-        child.wait().unwrap();
-    }
+pub fn manifest() -> Result<Manifest, ApiClientError> {
+    Ok(ApiClientUtil::new(mconf::get("manifest").get_string().as_str())?.manifest)
 }

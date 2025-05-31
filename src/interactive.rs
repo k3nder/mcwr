@@ -2,9 +2,10 @@ use std::{io::Write, thread, time::Duration};
 
 use console::{style, Term};
 use dialoguer::{theme::ColorfulTheme, Confirm, FuzzySelect, Input, Select};
+use mcd::api::ApiClientUtil;
 use translateutil::translate;
 
-use crate::{config::Types, mconf, mvers};
+use crate::{config::Types, mconf, mvers::{self, manifest}};
 
 pub fn run() {
     let term = Term::stdout();
@@ -48,8 +49,8 @@ fn view_metadata(term: &Term) {
     print_meta("java", version.java);
     print_meta("main", version.main);
     print_meta("version", version.version);
-    print_meta_array("args", version.args);
-    print_meta_array("jvm", version.jvm);
+    print_meta_array("args", version.jvm_args);
+    print_meta_array("jvm", version.game_args);
 }
 fn print_meta_array(name: &str, values: Vec<String>) {
     print_system_message(&format!(
@@ -163,11 +164,9 @@ fn download_version(term: &Term) {
     );
     print_system_message(translate!("dwld.cooldown.message"));
     counter_back(3);
-    let version = mclr::utils::manifest::manifest()
-        .get(&version_id)
-        .unwrap()
-        .save_and_load(mconf::get("tmp").get_string().as_str());
-    mvers::download(version.clone(), assets == 0);
+    let apic = ApiClientUtil::new(mconf::get("manifest").get_string().as_str()).unwrap();
+    let client = apic.fetch(&version_id, mconf::get("tmp").get_string().as_str()).unwrap();
+    mvers::download(&client, assets == 0);
 
     print_system_message(translate!("dwld.done"));
     let launch = open_select(
