@@ -1,4 +1,3 @@
-use crate::config::Types;
 use crate::{mconf, mvers};
 use clap::{Parser, Subcommand};
 use flate2::read::GzEncoder;
@@ -45,10 +44,6 @@ enum Commands {
         #[arg(short = 'C')]
         confirm: bool,
     },
-    Config {
-        key: Option<String>,
-        value: Option<String>,
-    },
     Find {
         #[arg()]
         version: String,
@@ -70,12 +65,12 @@ pub fn run() {
             silent,
             no_assets,
         } => {
-            let apic = ApiClientUtil::new(mconf::get("manifest").get_string().as_str()).unwrap();
+            let apic = ApiClientUtil::new(mconf::get("manifest")).unwrap();
 
             let client = if version.starts_with("./") {
-                apic.load(version.as_str(), &mconf::get("tmp").get_string()).unwrap()
+                apic.load(version.as_str(), mconf::get("tmp")).unwrap()
             } else {
-                apic.fetch(&version, &mconf::get("tmp").get_string()).unwrap()
+                apic.fetch(&version, mconf::get("tmp")).unwrap()
             };
             dbg!(&client);
             mvers::download(&client, !no_assets);
@@ -91,7 +86,7 @@ pub fn run() {
                 }
             };
 
-            vers.run(std, std, mconf::get("pwd").get_string());
+            vers.run(std, std, mconf::get("pwd"));
         }
         Commands::Ls { short } => {
             let versions = mvers::list();
@@ -115,21 +110,6 @@ pub fn run() {
             }
             mvers::remove(version);
         }
-        Commands::Config { key, value } => {
-            if key.is_none() && value.is_none() {
-                let config = mconf::config();
-                for (k, v) in config.iter() {
-                    println!("{} = {}", k, v.display());
-                }
-            }
-            if key.is_some() && value.is_some() {
-                let value = Types::from_value(value.clone().unwrap());
-                mconf::set(key.clone().unwrap().as_str(), value.clone().unwrap());
-            }
-            if key.is_some() && value.is_none() {
-                println!("{}", mconf::get(key.clone().unwrap().as_str()).get_string());
-            }
-        }
         Commands::Find { version } => {
             if version.eq("release") {
                 let release = mvers::manifest_latest_release();
@@ -149,12 +129,12 @@ pub fn run() {
         #[cfg(feature = "export")]
         Commands::Export { version } => {
             let path =
-                mconf::get_or("export_path", Types::String(String::from("exports"))).get_string();
+                mconf::get_or("export_path", String::from("exports"));
             if !Path::new(&path).exists() {
                 fs::create_dir(&path).expect("Cannot create export path");
             }
             let file = format!("{}/{}.tar.gz", path, version);
-            let versions_path = format!("{}/{}", mconf::get("versions").get_string(), version);
+            let versions_path = format!("{}/{}", mconf::get::<&str>("versions"), version);
             let file = File::create(file).expect("Cannot create output file");
             let enc = GzEncoder::new(file, Compression::best());
             let mut tar = Builder::new(enc);

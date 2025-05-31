@@ -2,15 +2,12 @@ use std::path::Path;
 use std::{env, fs};
 
 mod cline;
-mod config;
 #[cfg(feature = "interactive")]
 mod interactive;
 mod mconf;
 #[cfg(feature = "modpack")]
 mod modpack;
 mod mvers;
-#[cfg(test)]
-mod tests;
 
 fn main() {
     // initialize env_logger
@@ -29,18 +26,10 @@ fn init() {
     let versions_path = Path::new("versions");
     let assets_path = Path::new("assets");
     let workdir_path = Path::new("workdir");
-    let user_conf_path = Path::new("user.conf");
+    let user_conf_path = Path::new("mcwr.conf");
 
     // valor por defecto de la configuracion
-    let default_config = r#"username:'imbecil'
-    xmx:*4*
-    xms:*2*
-    pwd:'workdir'
-    assets:'assets'
-    java:'java'
-    versions:'versions'
-    tmp:'.client.json.tmp'
-    logger:'logger.config.xml'"#;
+    let default_config = include_str!("mcwr.default.conf");
 
     // si no existen los creamos
     if !versions_path.exists() {
