@@ -5,7 +5,8 @@ use dialoguer::{theme::ColorfulTheme, Confirm, FuzzySelect, Input, Select};
 use mcd::api::ApiClientUtil;
 use translateutil::translate;
 
-use crate::{config::Types, mconf, mvers::{self, manifest}};
+use crate::{mconf, mvers};
+
 
 pub fn run() {
     let term = Term::stdout();
@@ -20,9 +21,6 @@ pub fn run() {
             }
             Action::DownloadVersion => {
                 download_version(&term);
-            }
-            Action::Configurations => {
-                configurations(&term);
             }
             Action::DeleteVersion => {
                 delete_version(&term);
@@ -70,66 +68,6 @@ fn print_meta(name: &str, value: String) {
         style(value).red().bold().bright()
     ));
 }
-enum ConfigurationAction {
-    GetConfigurations,
-    SetConfigurations,
-}
-impl ConfigurationAction {
-    fn prompt() -> ConfigurationAction {
-        let select = Select::with_theme(&ColorfulTheme::default())
-            .with_prompt(system_message(translate!("config.choose.action.prompt")))
-            .items(&[
-                translate!("config.choose.action.get"),
-                translate!("config.choose.action.set"),
-            ])
-            .interact()
-            .unwrap();
-        match select {
-            0 => ConfigurationAction::GetConfigurations,
-            1 => ConfigurationAction::SetConfigurations,
-            _ => unreachable!(),
-        }
-    }
-}
-fn configurations(term: &Term) {
-    print_system_message(translate!("config.initial"));
-    let action = ConfigurationAction::prompt();
-    match action {
-        ConfigurationAction::GetConfigurations => {
-            print_system_message(translate!("config.get.initial"));
-            let config = mconf::config();
-            let rendereable_config = config.iter().map(|(key, _)| format!("{}", key));
-            let select = FuzzySelect::with_theme(&ColorfulTheme::default())
-                .items(&rendereable_config.collect::<Vec<String>>())
-                .interact()
-                .unwrap();
-            let key = config.keys().nth(select).unwrap();
-            let value = config.get(key).unwrap().get_string();
-            print_system_message(&format!(
-                "{} {} {}",
-                style(key).green().bold().bright(),
-                translate!("words.is"),
-                style(value).red().bold().bright()
-            ));
-        }
-        ConfigurationAction::SetConfigurations => {
-            print_system_message(translate!("config.set.initial"));
-            let config = mconf::config();
-            let rendereable_config = config.iter().map(|(key, _)| format!("{}", key));
-            let select = FuzzySelect::with_theme(&ColorfulTheme::default())
-                .with_prompt(system_message(translate!("config.set.prompt")))
-                .items(&rendereable_config.collect::<Vec<String>>())
-                .interact()
-                .unwrap();
-            let key = config.keys().nth(select).unwrap();
-            let value: String = Input::new()
-                .with_prompt(system_message(translate!("config.set.ask.new")))
-                .interact()
-                .unwrap();
-            mconf::set(key, Types::from_value(value).unwrap());
-        }
-    }
-}
 fn show_downloaded_versions(term: &Term) {
     print_system_message(translate!("ls.initial"));
     let versions = mvers::list();
@@ -164,8 +102,8 @@ fn download_version(term: &Term) {
     );
     print_system_message(translate!("dwld.cooldown.message"));
     counter_back(3);
-    let apic = ApiClientUtil::new(mconf::get("manifest").get_string().as_str()).unwrap();
-    let client = apic.fetch(&version_id, mconf::get("tmp").get_string().as_str()).unwrap();
+    let apic = ApiClientUtil::new(&mconf::get::<String>("manifest")).unwrap();
+    let client = apic.fetch(&version_id, &mconf::get::<String>("tmp")).unwrap();
     mvers::download(&client, assets == 0);
 
     print_system_message(translate!("dwld.done"));
@@ -182,7 +120,7 @@ fn download_version(term: &Term) {
         version.run(
             |l| println!("{}", l),
             |e| println!("{}", e),
-            mconf::get("pwd").get_string(),
+            mconf::get("pwd"),
         );
         print_system_message(translate!("info.finish"));
         std::process::exit(0);
@@ -251,7 +189,7 @@ fn run_game(term: &Term) {
     version.run(
         |l| println!("{}", l),
         |e| println!("{}", e),
-        mconf::get("pwd").get_string(),
+        mconf::get("pwd"),
     );
     print_system_message(translate!("run.finish"));
     print_system_message(translate!("info.finish"));
@@ -261,7 +199,6 @@ fn run_game(term: &Term) {
 enum Action {
     ShowDownloadedVersions,
     DownloadVersion,
-    Configurations,
     DeleteVersion,
     RunGame,
     ViewMetadata,
@@ -273,7 +210,6 @@ fn prompt_user_action() -> Action {
         vec![
             translate!("options.ls"),
             translate!("options.dwld"),
-            translate!("options.config"),
             translate!("options.delete"),
             translate!("options.run"),
             translate!("options.view.meta"),
@@ -288,10 +224,9 @@ fn prompt_user_action() -> Action {
     match selection {
         0 => Action::ShowDownloadedVersions,
         1 => Action::DownloadVersion,
-        2 => Action::Configurations,
-        3 => Action::DeleteVersion,
-        4 => Action::RunGame,
-        5 => Action::ViewMetadata,
+        2 => Action::DeleteVersion,
+        3 => Action::RunGame,
+        4 => Action::ViewMetadata,
         _ => Action::Exit,
     }
 }
