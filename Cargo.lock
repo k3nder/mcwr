@@ -406,9 +406,9 @@ checksum = "0e4cec68f03f32e44924783795810fa50a7035d8c8ebe78580ad7e6c703fba38"
 
 [[package]]
 name = "bytes"
-version = "1.10.0"
+version = "1.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f61dac84819c6588b558454b194026eb1f09c293b9036ae9b159e74e73ab6cf9"
+checksum = "d71b6127be86fdcfddb610f7182ac57211d4b18a3e9c82eb2d17662f2227ad6a"
 
 [[package]]
 name = "bzip2"
@@ -1224,7 +1224,7 @@ version = "0.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "601cbb57e577e2f5ef5be8e7b83f0f63994f25aa94d673e54a92d5c516d101f1"
 dependencies = [
- "bytes 1.10.0",
+ "bytes 1.10.1",
  "fnv",
  "itoa",
 ]
@@ -1626,9 +1626,9 @@ dependencies = [
 
 [[package]]
 name = "mcd"
-version = "0.3.0"
+version = "0.3.2-a"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "121864575085d9b7b880111aafec11acac51765e0fa7357f09f05f9614fd5d72"
+checksum = "bcd863cef8022129e13b5d259d5d81779d1828b11160c9816ac7c1b3f0cb6be3"
 dependencies = [
  "dwldutil",
  "log",
@@ -1642,7 +1642,7 @@ dependencies = [
 
 [[package]]
 name = "mcwr"
-version = "0.2.3"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -1657,6 +1657,7 @@ dependencies = [
  "mcd",
  "serde",
  "tar",
+ "thiserror 2.0.12",
  "toml",
  "translateutil",
 ]
@@ -1718,9 +1719,9 @@ checksum = "d05e27ee213611ffe7d6348b942e8f942b37114c00cc03cec254295a4a17852e"
 
 [[package]]
 name = "openssl-sys"
-version = "0.9.106"
+version = "0.9.109"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8bb61ea9811cc39e3c2069f40b8b8e2e70d8569b361f879786cc7ed48b777cdd"
+checksum = "90096e2e47630d78b7d1c20952dc621f957103f8bc2c8359ec81290d75238571"
 dependencies = [
  "cc",
  "libc",

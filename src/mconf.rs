@@ -1,7 +1,3 @@
-use std::{collections::HashMap, fs::read};
-use std::fs;
-use std::path::Path;
-
 use config::Config;
 use serde::Deserialize;
 
