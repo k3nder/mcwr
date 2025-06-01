@@ -1,14 +1,15 @@
 use std::{io::Write, thread, time::Duration};
 
 use console::{style, Term};
-use dialoguer::{theme::ColorfulTheme, Confirm, FuzzySelect, Input, Select};
+use dialoguer::{theme::ColorfulTheme, Confirm, Select};
 use mcd::api::ApiClientUtil;
 use translateutil::translate;
+use anyhow::Result;
 
-use crate::{mconf, mvers};
+use crate::{mconf, mvers, temp};
 
 
-pub fn run() {
+pub fn run() -> Result<()> {
     let term = Term::stdout();
     term.clear_screen().unwrap();
 
@@ -17,31 +18,31 @@ pub fn run() {
     loop {
         match prompt_user_action() {
             Action::ShowDownloadedVersions => {
-                show_downloaded_versions(&term);
+                show_downloaded_versions(&term)?;
             }
             Action::DownloadVersion => {
-                download_version(&term);
+                download_version(&term)?;
             }
             Action::DeleteVersion => {
-                delete_version(&term);
+                delete_version(&term)?;
             }
             Action::RunGame => {
-                run_game(&term);
+                run_game(&term)?;
             }
             Action::ViewMetadata => {
-                view_metadata(&term);
+                view_metadata(&term)?;
             }
             Action::Exit => {
                 println!(translate!("info.exit"));
-                break;
+                break Ok(());
             }
         }
     }
 }
 
-fn view_metadata(term: &Term) {
+fn view_metadata(term: &Term) -> Result<()> {
     print_system_message(translate!("meta.view.initial"));
-    let version = select_downloaded_version(term);
+    let version = select_downloaded_version(term)?;
     print_system_message(translate!("meta.view.message"));
     let version = mvers::get(version).unwrap();
     print_meta("java", version.java);
@@ -49,6 +50,7 @@ fn view_metadata(term: &Term) {
     print_meta("version", version.version);
     print_meta_array("args", version.jvm_args);
     print_meta_array("jvm", version.game_args);
+    Ok(())
 }
 fn print_meta_array(name: &str, values: Vec<String>) {
     print_system_message(&format!(
@@ -68,20 +70,21 @@ fn print_meta(name: &str, value: String) {
         style(value).red().bold().bright()
     ));
 }
-fn show_downloaded_versions(term: &Term) {
+fn show_downloaded_versions(term: &Term) -> Result<()> {
     print_system_message(translate!("ls.initial"));
-    let versions = mvers::list();
+    let versions = mvers::list()?;
     if versions.is_empty() {
-        term.move_cursor_up(1).unwrap();
-        term.clear_line().unwrap();
+        term.move_cursor_up(1)?;
+        term.clear_line()?;
         print_system_message(translate!("ls.empty"));
     } else {
         versions.iter().for_each(|(name, _)| {
             println!("{}", name);
         });
     }
+    Ok(())
 }
-fn download_version(term: &Term) {
+fn download_version(term: &Term) -> Result<()> {
     print_system_message(translate!("dwld.initial"));
     let version_id = select_version(&term);
     print_system_message(
@@ -102,9 +105,9 @@ fn download_version(term: &Term) {
     );
     print_system_message(translate!("dwld.cooldown.message"));
     counter_back(3);
-    let apic = ApiClientUtil::new(&mconf::get::<String>("manifest")).unwrap();
-    let client = apic.fetch(&version_id, &mconf::get::<String>("tmp")).unwrap();
-    mvers::download(&client, assets == 0);
+    let apic = ApiClientUtil::new(&mconf::get::<String>("manifest"))?;
+    let client = apic.fetch(&version_id, &temp!("mcwr-client.tmp"))?;
+    mvers::download(&client, assets == 0)?;
 
     print_system_message(translate!("dwld.done"));
     let launch = open_select(
@@ -116,17 +119,17 @@ fn download_version(term: &Term) {
     );
     if launch == 0 {
         print_system_message(translate!("dwld.launch.initial"));
-        let version = mvers::get(version_id).unwrap();
+        let version = mvers::get(version_id).expect("VERSION NOT FOUND");
         version.run(
             |l| println!("{}", l),
             |e| println!("{}", e),
-            mconf::get("pwd"),
         );
         print_system_message(translate!("info.finish"));
         std::process::exit(0);
     }
+    Ok(())
 }
-fn select_version(term: &Term) -> String {
+fn select_version(_: &Term) -> String {
     let versions = mvers::list_manifest();
     let selection = dialoguer::FuzzySelect::with_theme(&ColorfulTheme::default())
         .with_prompt(system_message(translate!("select.version.prompt")))
@@ -136,8 +139,8 @@ fn select_version(term: &Term) -> String {
         .unwrap();
     versions[selection].clone()
 }
-fn select_downloaded_version(term: &Term) -> String {
-    let versions = mvers::list()
+fn select_downloaded_version(term: &Term) -> Result<String> {
+    let versions = mvers::list()?
         .iter()
         .map(|v| v.0.clone())
         .collect::<Vec<String>>();
@@ -146,8 +149,7 @@ fn select_downloaded_version(term: &Term) -> String {
         print_system_message(translate!("select.version.empty"));
         let confirm = Confirm::new()
             .with_prompt(system_message(translate!("select.version.ask.dwld")))
-            .interact()
-            .unwrap();
+            .interact()?;
         if !confirm {
             std::process::exit(0);
         } else {
@@ -160,18 +162,16 @@ fn select_downloaded_version(term: &Term) -> String {
         .with_prompt(system_message(translate!("select.version.prompt")))
         .default(0)
         .items(versions.as_slice())
-        .interact()
-        .unwrap();
-    versions[selection].clone()
+        .interact()?;
+    Ok(versions[selection].clone())
 }
-fn delete_version(term: &Term) {
+fn delete_version(term: &Term) -> Result<()> {
     print_system_message(translate!("delete.initial"));
-    let version_id = select_downloaded_version(term);
+    let version_id = select_downloaded_version(term)?;
 
     let confirmation = Confirm::new()
         .with_prompt(system_message(translate!("delete.confirm")))
-        .interact()
-        .unwrap();
+        .interact()?;
 
     if confirmation {
         mvers::remove(version_id);
@@ -180,16 +180,16 @@ fn delete_version(term: &Term) {
     }
 
     print_system_message(translate!("delete.success"));
+    Ok(())
 }
-fn run_game(term: &Term) {
+fn run_game(term: &Term) -> Result<()> {
     print_system_message(translate!("run.initial"));
-    let version_id = select_downloaded_version(term);
+    let version_id = select_downloaded_version(term)?;
     print_system_message(translate!("run.loading"));
-    let version = mvers::get(version_id).unwrap();
+    let version = mvers::get(version_id).expect("VERSION NOT EXIST");
     version.run(
         |l| println!("{}", l),
         |e| println!("{}", e),
-        mconf::get("pwd"),
     );
     print_system_message(translate!("run.finish"));
     print_system_message(translate!("info.finish"));

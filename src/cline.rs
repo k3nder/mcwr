@@ -1,4 +1,4 @@
-use crate::{mconf, mvers};
+use crate::{mconf, mvers, temp};
 use clap::{Parser, Subcommand};
 use flate2::read::GzEncoder;
 use flate2::Compression;
@@ -9,9 +9,10 @@ use std::io::Write;
 use std::path::Path;
 use std::process::exit;
 use tar::Builder;
+use anyhow::{Ok, Result};
 
 #[derive(Parser, Debug)]
-#[command(author = "kristian/k3nder", version = "0.2.3", about)]
+#[command(author = "kristian/k3nder", version = "0.3.0", about)]
 struct Args {
     #[command(subcommand)]
     command: Commands,
@@ -55,7 +56,7 @@ enum Commands {
     },
 }
 
-pub fn run() {
+pub fn run() -> Result<()> {
     let args = Args::parse();
 
     match args.command {
@@ -65,19 +66,17 @@ pub fn run() {
             silent,
             no_assets,
         } => {
-            let apic = ApiClientUtil::new(mconf::get("manifest")).unwrap();
+            let apic = ApiClientUtil::new(&mconf::get::<String>("manifest"))?;
 
             let client = if version.starts_with("./") {
-                apic.load(version.as_str(), mconf::get("tmp")).unwrap()
+                apic.load(version.as_str(), temp!("mcwr-client.tmp"))?
             } else {
-                apic.fetch(&version, mconf::get("tmp")).unwrap()
+                apic.fetch(&version, temp!("mcwr-client.tmp"))?
             };
-            dbg!(&client);
-            mvers::download(&client, !no_assets);
+            mvers::download(&client, !no_assets)?;
         }
         Commands::Run { version, silent } => {
             let vers = mvers::get(version).expect("Version not found in MVERS");
-
             let std: fn(String) = if silent {
                 |_| {}
             } else {
@@ -85,11 +84,10 @@ pub fn run() {
                     println!("{}", e);
                 }
             };
-
-            vers.run(std, std, mconf::get("pwd"));
+            vers.run(std, std)?;
         }
         Commands::Ls { short } => {
-            let versions = mvers::list();
+            let versions = mvers::list()?;
             for (k, v) in versions.iter() {
                 let message = if short {
                     format!("{}", k)
@@ -114,11 +112,11 @@ pub fn run() {
             if version.eq("release") {
                 let release = mvers::manifest_latest_release();
                 println!("{}", release);
-                return;
+                return Ok(());
             } else if version.eq("snapshot") {
                 let snapshot = mvers::manifest_latest_snapshot();
                 println!("{}", snapshot);
-                return;
+                return Ok(());
             }
             let versions = mvers::list_manifest();
             versions
@@ -135,28 +133,24 @@ pub fn run() {
             }
             let file = format!("{}/{}.tar.gz", path, version);
             let versions_path = format!("{}/{}", mconf::get::<&str>("versions"), version);
-            let file = File::create(file).expect("Cannot create output file");
+            let file = File::create(file)?;
             let enc = GzEncoder::new(file, Compression::best());
             let mut tar = Builder::new(enc);
-
-            tar.append_dir_all(&version, &versions_path)
-                .expect("Cannot find version");
-
-            tar.finish().expect("Cannot create export");
+            tar.append_dir_all(&version, &versions_path)?;
+            tar.finish()?
         }
     }
+
+    Ok(())
 }
 
 fn confirmation(message: &str) -> bool {
     print!("{} (s/n): ", message);
     io::stdout().flush().unwrap(); // Asegura que el mensaje se imprima antes de leer
-
     let mut input = String::new();
     io::stdin().read_line(&mut input).unwrap();
-
     // Convertimos la entrada a minúsculas y removemos espacios y saltos de línea
     let input = input.trim().to_lowercase();
-
     if input == "s" || input == "si" {
         true
     } else {
