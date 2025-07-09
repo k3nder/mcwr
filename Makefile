@@ -1,4 +1,5 @@
 build-musl:
+	@make build-podman
 	@echo "Building for musl..."
 	$(eval CONTAINER_ID := $(shell podman create rust-musl-builder))
 
